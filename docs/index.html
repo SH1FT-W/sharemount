@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ShareMount</title>
+<script src="https://sh1ft-w.github.io/bar.js" data-project="sharemount" defer></script>
+<meta name="description" content="A small macOS menu bar app that keeps your SMB shares mounted and reconnects them after sleep, network changes and NAS restarts.">
+<meta property="og:title" content="ShareMount">
+<meta property="og:description" content="Keeps your SMB shares mounted. Reconnects after sleep, network changes and NAS restarts.">
+<meta property="og:image" content="https://sh1ft-w.github.io/sharemount/icon.png">
+<meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/png" href="icon.png">
+<style>
+  :root {
+    --bg: #f5f5f7; --ink: #1d1d1f; --ink-2: #6e6e73; --line: #d2d2d7; --tile: #fff; --tile-ring: rgba(0,0,0,.06);
+    --link: #0066cc; --accent: #0071e3; --pill: rgba(0,0,0,.05);
+    --shot-shadow: 0 1px 2px rgba(0,0,0,.06), 0 18px 50px rgba(0,0,0,.14);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #000; --ink: #f5f5f7; --ink-2: #a1a1a6; --line: #38383b; --tile: #1c1c1e; --tile-ring: rgba(255,255,255,.08);
+      --link: #2997ff; --accent: #0a84ff; --pill: rgba(255,255,255,.09);
+      --shot-shadow: 0 0 0 1px rgba(255,255,255,.1), 0 18px 50px rgba(0,0,0,.7);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #000; --ink: #f5f5f7; --ink-2: #a1a1a6; --line: #38383b; --tile: #1c1c1e; --tile-ring: rgba(255,255,255,.08);
+    --link: #2997ff; --accent: #0a84ff; --pill: rgba(255,255,255,.09);
+    --shot-shadow: 0 0 0 1px rgba(255,255,255,.1), 0 18px 50px rgba(0,0,0,.7);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 17px/1.47 -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", Roboto, system-ui, sans-serif;
+    letter-spacing: -.022em; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  a { color: var(--link); text-decoration: none; }
+  a:hover { text-decoration: underline; text-underline-offset: 3px; }
+  a:focus-visible { outline: 3px solid color-mix(in srgb, var(--link) 60%, transparent); outline-offset: 2px; border-radius: 6px; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 max(24px, env(safe-area-inset-right)) 0 max(24px, env(safe-area-inset-left)); }
+  .display { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, system-ui, sans-serif; }
+
+  /* Hero */
+  .hero { text-align: center; padding: 104px 0 8px; }
+  .hero .icon { width: 128px; height: 128px; display: block; margin: 0 auto 20px; }
+  h1 { font-size: 72px; line-height: 1.05; font-weight: 700; letter-spacing: -.035em; margin: 0 0 14px; }
+  .pitch { font-size: 28px; line-height: 1.18; font-weight: 600; letter-spacing: -.02em; margin: 0 auto 12px; max-width: 680px; text-wrap: balance; }
+  .sub { font-size: 19px; color: var(--ink-2); margin: 0 auto; max-width: 600px; text-wrap: pretty; }
+  .cta { display: flex; gap: 14px 28px; justify-content: center; align-items: center; flex-wrap: wrap; margin-top: 30px; }
+  .btn { display: inline-flex; align-items: center; height: 44px; padding: 0 24px; border-radius: 99px; background: var(--accent);
+    color: #fff; font-size: 17px; font-weight: 500; letter-spacing: -.01em; }
+  .btn:hover { text-decoration: none; filter: brightness(1.08); }
+  .btn:focus-visible { border-radius: 99px; }
+  .more { font-size: 17px; }
+  .more .chev, .btn .chev { margin-left: 3px; }
+  .meta { margin-top: 14px; font-size: 13px; color: var(--ink-2); letter-spacing: -.005em; }
+
+  /* Screenshots */
+  .stage { display: flex; justify-content: center; align-items: flex-start; gap: 40px; margin: 64px auto 0; flex-wrap: wrap; }
+  .shot { margin: 0; }
+  .shot img { display: block; height: auto; border-radius: 14px; box-shadow: var(--shot-shadow); background: var(--tile); }
+  .shot.menu img { width: 330px; }
+  .shot.update img { width: 500px; border-radius: 12px; }
+  .stage .side { display: flex; flex-direction: column; gap: 22px; align-items: center; padding-top: 70px; }
+  .shot figcaption { margin-top: 14px; text-align: center; font-size: 14px; color: var(--ink-2); letter-spacing: -.01em; }
+
+  /* Sections */
+  section { padding-top: 112px; }
+  h2 { font-size: 48px; line-height: 1.08; font-weight: 700; letter-spacing: -.03em; margin: 0 0 12px; text-align: center; text-wrap: balance; }
+  .lead { text-align: center; font-size: 21px; line-height: 1.38; color: var(--ink-2); max-width: 640px; margin: 0 auto 48px; text-wrap: pretty; }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .card { background: var(--tile); border-radius: 22px; padding: 28px 26px 30px; box-shadow: inset 0 0 0 1px var(--tile-ring); }
+  .card svg { width: 30px; height: 30px; display: block; margin-bottom: 16px; color: var(--accent); }
+  .card h3 { font-size: 19px; line-height: 1.25; font-weight: 600; letter-spacing: -.015em; margin: 0 0 6px; }
+  .card p { margin: 0; font-size: 15px; line-height: 1.47; color: var(--ink-2); letter-spacing: -.01em; }
+
+  .wide { margin-top: 56px; text-align: center; }
+  .wide img { display: block; margin: 0 auto; width: 600px; max-width: 100%; height: auto; border-radius: 14px; box-shadow: var(--shot-shadow); }
+
+  /* Privacy */
+  .privacy { background: var(--tile); border-radius: 28px; padding: 56px 48px; box-shadow: inset 0 0 0 1px var(--tile-ring); }
+  .privacy h2 { margin-bottom: 36px; }
+  .plist { display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px 48px; list-style: none; margin: 0; padding: 0; }
+  .plist h3 { font-size: 17px; font-weight: 600; margin: 0 0 4px; letter-spacing: -.015em; }
+  .plist p { margin: 0; color: var(--ink-2); font-size: 15px; letter-spacing: -.01em; }
+  code { font: 14px/1.4 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0; background: var(--pill); padding: 1px 6px; border-radius: 6px; }
+
+  /* Install */
+  .steps { counter-reset: s; list-style: none; margin: 0 auto; padding: 0; max-width: 680px; }
+  .steps li { counter-increment: s; position: relative; padding: 0 0 26px 56px; }
+  .steps li::before { content: counter(s); position: absolute; left: 0; top: -2px; width: 34px; height: 34px; border-radius: 50%;
+    background: var(--pill); color: var(--ink); font-weight: 600; font-size: 16px; display: grid; place-items: center; letter-spacing: 0; }
+  .steps h3 { font-size: 19px; font-weight: 600; margin: 0 0 4px; letter-spacing: -.015em; }
+  .steps p { margin: 0; color: var(--ink-2); font-size: 16px; }
+  .steps pre { margin: 10px 0 0; padding: 12px 16px; border-radius: 12px; background: var(--tile); box-shadow: inset 0 0 0 1px var(--tile-ring); overflow-x: auto; }
+  .steps pre code { background: none; padding: 0; font-size: 13px; }
+  .req { text-align: center; color: var(--ink-2); font-size: 15px; margin: 18px auto 0; max-width: 680px; }
+
+  footer { margin-top: 112px; padding: 20px 0 48px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: 12px; letter-spacing: -.005em;
+    display: flex; flex-wrap: wrap; gap: 6px 20px; }
+  footer a { color: inherit; }
+  footer a:hover { color: var(--ink); }
+
+  /* Theme-matched screenshots */
+  .dark-only { display: none !important; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .dark-only { display: block !important; }
+    :root:not([data-theme="light"]) .light-only { display: none !important; }
+  }
+  :root[data-theme="dark"] .dark-only { display: block !important; }
+  :root[data-theme="dark"] .light-only { display: none !important; }
+
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+    .stage .side { padding-top: 0; }
+  }
+  @media (max-width: 734px) {
+    .hero { padding-top: 72px; }
+    .hero .icon { width: 104px; height: 104px; }
+    h1 { font-size: 48px; }
+    .pitch { font-size: 22px; line-height: 1.24; }
+    .sub { font-size: 17px; }
+    .stage { margin-top: 48px; gap: 32px; }
+    .shot.menu img { width: min(330px, 100%); }
+    .shot.update img { width: 100%; }
+    .stage .side { width: 100%; }
+    section { padding-top: 80px; }
+    h2 { font-size: 34px; }
+    .lead { font-size: 18px; margin-bottom: 32px; }
+    .grid { grid-template-columns: 1fr; gap: 12px; }
+    .card { padding: 22px 22px 24px; border-radius: 18px; }
+    .privacy { padding: 36px 22px; border-radius: 22px; }
+    .plist { grid-template-columns: 1fr; gap: 22px; }
+    .steps li { padding-left: 48px; }
+    footer { margin-top: 80px; }
+  }
+  @media (max-width: 360px) { .wrap { padding-left: 16px; padding-right: 16px; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+
+  <header class="hero">
+    <img class="icon" src="icon.png" alt="" width="128" height="128">
+    <h1 class="display">ShareMount</h1>
+    <p class="pitch display">Your network shares, always there.</p>
+    <p class="sub">A small menu bar app for the Mac that keeps SMB shares mounted and brings them back after sleep, network changes and NAS restarts.</p>
+    <div class="cta">
+      <a class="btn" href="https://github.com/SH1FT-W/sharemount/releases/latest">Download</a>
+      <a class="more" href="https://github.com/SH1FT-W/sharemount">View on GitHub<span class="chev" aria-hidden="true">›</span></a>
+    </div>
+    <p class="meta">Free and open source · macOS 14 or later · Apple silicon</p>
+  </header>
+
+  <div class="stage">
+    <figure class="shot menu">
+      <img class="light-only" src="screenshots/menu-light.png" width="330" height="424" alt="ShareMount menu with three connected shares and one unreachable server">
+      <img class="dark-only" src="screenshots/menu-dark.png" width="330" height="424" alt="ShareMount menu in dark mode">
+      <figcaption>The menu, styled like Wi-Fi and Bluetooth</figcaption>
+    </figure>
+    <div class="side">
+      <figure class="shot update">
+        <img class="light-only" src="screenshots/update-light.png" width="500" height="194" alt="Update window offering a new version">
+        <img class="dark-only" src="screenshots/update-dark.png" width="500" height="194" alt="Update window in dark mode">
+        <figcaption>Updates from GitHub, checked before they install</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <section id="features" aria-labelledby="f-h">
+    <h2 id="f-h" class="display">Set it up once. Forget about it.</h2>
+    <p class="lead">ShareMount watches your shares in the background and quietly fixes what macOS leaves broken.</p>
+    <div class="grid">
+      <div class="card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 20v-4h-4"/></svg>
+        <h3>Reconnects on its own</h3>
+        <p>After wake, Wi-Fi changes and NAS reboots. While a server is away it backs off gently, from 30 seconds up to 15 minutes.</p>
+      </div>
+      <div class="card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <h3>No more beachballs</h3>
+        <p>Hung mounts are detected with short timeouts and remounted, but never in the first seconds after wake.</p>
+      </div>
+      <div class="card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        <h3>Uses the macOS keychain</h3>
+        <p>Connects through macOS with the password the Finder already saved. ShareMount never reads or stores a password.</p>
+      </div>
+      <div class="card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h6l2 2h10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 14h6"/></svg>
+        <h3>Clean paths</h3>
+        <p>Keeps shares at <code>/Volumes/Media</code> instead of <code>Media-1</code>, so scripts and backups always find them.</p>
+      </div>
+      <div class="card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4v5c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V7z"/><path d="M12 9v4"/><path d="M12 16.5v.01"/></svg>
+        <h3>Gentle with your NAS</h3>
+        <p>A rejected password stops all automatic retries until you sign in again, so your account is never locked out.</p>
+      </div>
+      <div class="card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1-.6-9 6 6 0 0 1 11.4 1.5A4 4 0 0 1 17 18z"/></svg>
+        <h3>All your Macs</h3>
+        <p>With iCloud Drive, your list of shares follows you to every Mac. Passwords stay in each Mac's keychain.</p>
+      </div>
+    </div>
+    <div class="wide">
+      <img class="light-only" src="screenshots/settings-shares-light.png" width="600" height="400" alt="Settings window listing four shares on nas.local">
+      <img class="dark-only" src="screenshots/settings-shares-dark.png" width="600" height="400" alt="Settings window in dark mode">
+    </div>
+  </section>
+
+  <section id="privacy" aria-labelledby="p-h">
+    <div class="privacy">
+      <h2 id="p-h" class="display">Private by design.</h2>
+      <ul class="plist">
+        <li><h3>No tracking</h3><p>No analytics, no telemetry, no accounts. There is nothing to sign up for.</p></li>
+        <li><h3>Only your servers</h3><p>ShareMount talks to your own SMB servers and, to look for updates, to GitHub. Nothing else.</p></li>
+        <li><h3>No passwords stored</h3><p>Passwords stay in the macOS keychain and are only ever used by macOS itself.</p></li>
+        <li><h3>Plain files</h3><p>Your shares live in a readable <code>shares.json</code>, the log in <code>~/Library/Logs</code>.</p></li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="install" aria-labelledby="i-h">
+    <h2 id="i-h" class="display">Install in a minute.</h2>
+    <p class="lead">ShareMount is open source and signed locally, not notarized by Apple, so macOS asks once before the first launch.</p>
+    <ol class="steps">
+      <li><h3>Download</h3><p>Get <code>ShareMount.zip</code> from the <a href="https://github.com/SH1FT-W/sharemount/releases/latest">latest release</a> and unzip it.</p></li>
+      <li><h3>Move to Applications</h3><p>Drag <code>ShareMount.app</code> into your Applications folder. Updates replace it there.</p></li>
+      <li><h3>Allow the first launch</h3><p>Open it, then go to System Settings › Privacy &amp; Security and click Open Anyway. Or in Terminal:</p>
+        <pre><code>xattr -dr com.apple.quarantine /Applications/ShareMount.app</code></pre></li>
+      <li><h3>Add your shares</h3><p>Add them in Settings or adopt the ones already mounted in the Finder. Sign in once with “Remember this password in my keychain”.</p></li>
+    </ol>
+    <p class="req">Requires macOS 14 or later on Apple silicon. English and German interface. Prefer to build it yourself? See the <a href="https://github.com/SH1FT-W/sharemount#build-from-source">README</a>.</p>
+  </section>
+
+  <footer>
+    <span>ShareMount by <a href="https://sh1ft-w.github.io/">SH1FT-W</a></span>
+    <a href="https://github.com/SH1FT-W/sharemount">Source on GitHub</a>
+    <a href="https://github.com/SH1FT-W/sharemount/blob/main/LICENSE">MIT License</a>
+    <span>No tracking on this site.</span>
+  </footer>
+</main>
+</body>
+</html>

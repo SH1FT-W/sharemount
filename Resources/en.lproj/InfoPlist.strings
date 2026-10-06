@@ -1,0 +1,2 @@
+/* Local Network permission prompt */
+"NSLocalNetworkUsageDescription" = "ShareMount checks whether your servers on the local network are reachable before it connects shares.";

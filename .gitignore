@@ -1,0 +1,6 @@
+build/
+.DS_Store
+*.xcuserstate
+# Local packaging helpers, not part of the app
+dist/
+installer/

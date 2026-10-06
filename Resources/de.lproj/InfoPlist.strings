@@ -1,0 +1,2 @@
+/* Frage nach dem Zugriff aufs lokale Netzwerk */
+"NSLocalNetworkUsageDescription" = "ShareMount prüft, ob deine Server im Heimnetz erreichbar sind, bevor es Freigaben einbindet.";
