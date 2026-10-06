@@ -141,71 +141,91 @@
     footer { margin-top: 80px; }
   }
   @media (max-width: 360px) { .wrap { padding-left: 16px; padding-right: 16px; } }
+
+  /* Zweisprachig: Browsersprache entscheidet, Schalter oben rechts merkt sich die Wahl */
+  html[lang="de"] .en, html[lang="en"] .de { display: none !important; }
+  main { position: relative; }
+  .lang { position: absolute; top: 18px; right: max(24px, env(safe-area-inset-right));
+    display: inline-flex; border: 1px solid var(--line); border-radius: 980px; overflow: hidden; }
+  .lang button { font: inherit; font-size: 12px; border: 0; background: none; color: var(--ink-2); padding: 3px 10px; cursor: pointer; letter-spacing: 0; }
+  .lang button.on { background: var(--ink); color: var(--bg); }
+  @media (max-width: 360px) { .lang { right: 16px; } }
 </style>
+<script>
+  (function () {
+    var saved = null;
+    try { saved = localStorage.getItem("sh1ftw-lang"); } catch (e) {}
+    var pref = saved || ((navigator.languages && navigator.languages[0]) || navigator.language || "en");
+    document.documentElement.lang = /^de/i.test(pref) ? "de" : "en";
+  })();
+</script>
 </head>
 <body>
 <main class="wrap">
+  <div class="lang" role="group" aria-label="Language">
+    <button data-l="de">DE</button><button data-l="en">EN</button>
+  </div>
 
   <header class="hero">
     <img class="icon" src="icon.png" alt="" width="128" height="128">
     <h1 class="display">ShareMount</h1>
-    <p class="pitch display">Your network shares, always there.</p>
-    <p class="sub">A small menu bar app for the Mac that keeps SMB shares mounted and brings them back after sleep, network changes and NAS restarts.</p>
+    <p class="pitch display"><span class="en">Your network shares, always there.</span><span class="de">Deine Netzwerkfreigaben, immer da.</span></p>
+    <p class="sub"><span class="en">A small menu bar app for the Mac that keeps SMB shares mounted and brings them back after sleep, network changes and NAS restarts.</span><span class="de">Eine kleine App für die Menüleiste des Mac. Sie hält SMB-Freigaben verbunden und holt sie nach dem Ruhezustand, nach Netzwerkwechseln und nach NAS-Neustarts zurück.</span></p>
     <div class="cta">
-      <a class="btn" href="https://github.com/SH1FT-W/sharemount/releases/latest">Download</a>
-      <a class="more" href="https://github.com/SH1FT-W/sharemount">View on GitHub<span class="chev" aria-hidden="true">›</span></a>
+      <a class="btn" href="https://github.com/SH1FT-W/sharemount/releases/latest"><span class="en">Download</span><span class="de">Laden</span></a>
+      <a class="more" href="https://github.com/SH1FT-W/sharemount"><span class="en">View on GitHub</span><span class="de">Auf GitHub ansehen</span><span class="chev" aria-hidden="true">›</span></a>
     </div>
-    <p class="meta">Free and open source · macOS 14 or later · Apple silicon</p>
+    <p class="meta"><span class="en">Free and open source · macOS 14 or later · Apple silicon</span><span class="de">Kostenlos und Open Source · macOS 14 oder neuer · Apple Chip</span></p>
   </header>
 
   <div class="stage">
     <figure class="shot menu">
       <img class="light-only" src="screenshots/menu-light.png" width="330" height="424" alt="ShareMount menu with three connected shares and one unreachable server">
       <img class="dark-only" src="screenshots/menu-dark.png" width="330" height="424" alt="ShareMount menu in dark mode">
-      <figcaption>The menu, styled like Wi-Fi and Bluetooth</figcaption>
+      <figcaption><span class="en">The menu, styled like Wi-Fi and Bluetooth</span><span class="de">Das Menü, gestaltet wie WLAN und Bluetooth</span></figcaption>
     </figure>
     <div class="side">
       <figure class="shot update">
         <img class="light-only" src="screenshots/update-light.png" width="500" height="194" alt="Update window offering a new version">
         <img class="dark-only" src="screenshots/update-dark.png" width="500" height="194" alt="Update window in dark mode">
-        <figcaption>Updates from GitHub, checked before they install</figcaption>
+        <figcaption><span class="en">Updates from GitHub, checked before they install</span><span class="de">Updates von GitHub, vor der Installation geprüft</span></figcaption>
       </figure>
     </div>
   </div>
 
   <section id="features" aria-labelledby="f-h">
-    <h2 id="f-h" class="display">Set it up once. Forget about it.</h2>
-    <p class="lead">ShareMount watches your shares in the background and quietly fixes what macOS leaves broken.</p>
+    <h2 id="f-h" class="display"><span class="en">Set it up once. Forget about it.</span><span class="de">Einmal einrichten. Vergessen.</span></h2>
+    <p class="lead"><span class="en">ShareMount watches your shares in the background and quietly fixes what macOS leaves broken.</span><span class="de">ShareMount behält deine Freigaben im Hintergrund im Blick und repariert still, was macOS kaputt zurücklässt.</span></p>
     <div class="grid">
       <div class="card">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 20v-4h-4"/></svg>
-        <h3>Reconnects on its own</h3>
-        <p>After wake, Wi-Fi changes and NAS reboots. While a server is away it backs off gently, from 30 seconds up to 15 minutes.</p>
+        <h3><span class="en">Reconnects on its own</span><span class="de">Verbindet sich selbst neu</span></h3>
+        <p><span class="en">After wake, Wi-Fi changes and NAS reboots. While a server is away it backs off gently, from 30 seconds up to 15 minutes.</span><span class="de">Nach dem Aufwachen, nach WLAN-Wechseln und NAS-Neustarts. Ist ein Server weg, wartet ShareMount immer etwas länger, von 30 Sekunden bis zu 15 Minuten.</span></p>
       </div>
       <div class="card">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-        <h3>No more beachballs</h3>
-        <p>Hung mounts are detected with short timeouts and remounted, but never in the first seconds after wake.</p>
+        <h3><span class="en">No more beachballs</span><span class="de">Kein Wasserball mehr</span></h3>
+        <p><span class="en">Hung mounts are detected with short timeouts and remounted, but never in the first seconds after wake.</span><span class="de">Hängende Freigaben werden mit kurzen Zeitlimits erkannt und neu verbunden, aber nie in den ersten Sekunden nach dem Aufwachen.</span></p>
       </div>
       <div class="card">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-        <h3>Uses the macOS keychain</h3>
-        <p>Connects through macOS with the password the Finder already saved. ShareMount never reads or stores a password.</p>
+        <h3><span class="en">Uses the macOS keychain</span><span class="de">Nutzt den macOS-Schlüsselbund</span></h3>
+        <p><span class="en">Connects through macOS with the password the Finder already saved. ShareMount never reads or stores a password.</span><span class="de">Verbindet über macOS mit dem Passwort, das der Finder schon gesichert hat. ShareMount liest oder speichert nie ein Passwort.</span></p>
       </div>
       <div class="card">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h6l2 2h10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 14h6"/></svg>
-        <h3>Clean paths</h3>
-        <p>Keeps shares at <code>/Volumes/Media</code> instead of <code>Media-1</code>, so scripts and backups always find them.</p>
+        <h3><span class="en">Clean paths</span><span class="de">Saubere Pfade</span></h3>
+        <p><span class="en">Keeps shares at <code>/Volumes/Media</code> instead of <code>Media-1</code>, so scripts and backups always find them.</span><span class="de">Hält Freigaben unter <code>/Volumes/Media</code> statt <code>Media-1</code>, damit Skripte und Backups sie immer finden.</span></p>
       </div>
       <div class="card">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4v5c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V7z"/><path d="M12 9v4"/><path d="M12 16.5v.01"/></svg>
-        <h3>Gentle with your NAS</h3>
-        <p>A rejected password stops all automatic retries until you sign in again, so your account is never locked out.</p>
+        <h3><span class="en">Gentle with your NAS</span><span class="de">Schonend für dein NAS</span></h3>
+        <p><span class="en">A rejected password stops all automatic retries until you sign in again, so your account is never locked out.</span><span class="de">Wird ein Passwort abgelehnt, stoppen alle automatischen Versuche, bis du dich neu anmeldest. So wird dein Konto nie gesperrt.</span></p>
       </div>
       <div class="card">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1-.6-9 6 6 0 0 1 11.4 1.5A4 4 0 0 1 17 18z"/></svg>
-        <h3>All your Macs</h3>
-        <p>With iCloud Drive, your list of shares follows you to every Mac. Passwords stay in each Mac's keychain.</p>
+        <h3><span class="en">All your Macs</span><span class="de">Alle deine Macs</span></h3>
+        <p><span class="en">With iCloud Drive, your list of shares follows you to every Mac. Passwords stay in each Mac's keychain.</span><span class="de">Mit iCloud Drive kommt deine Liste der Freigaben auf jeden Mac mit. Passwörter bleiben im Schlüsselbund des jeweiligen Mac.</span></p>
       </div>
     </div>
     <div class="wide">
@@ -216,35 +236,52 @@
 
   <section id="privacy" aria-labelledby="p-h">
     <div class="privacy">
-      <h2 id="p-h" class="display">Private by design.</h2>
+      <h2 id="p-h" class="display"><span class="en">Private by design.</span><span class="de">Privat von Grund auf.</span></h2>
       <ul class="plist">
-        <li><h3>No tracking</h3><p>No analytics, no telemetry, no accounts. There is nothing to sign up for.</p></li>
-        <li><h3>Only your servers</h3><p>ShareMount talks to your own SMB servers and, to look for updates, to GitHub. Nothing else.</p></li>
-        <li><h3>No passwords stored</h3><p>Passwords stay in the macOS keychain and are only ever used by macOS itself.</p></li>
-        <li><h3>Plain files</h3><p>Your shares live in a readable <code>shares.json</code>, the log in <code>~/Library/Logs</code>.</p></li>
+        <li><h3><span class="en">No tracking</span><span class="de">Kein Tracking</span></h3><p><span class="en">No analytics, no telemetry, no accounts. There is nothing to sign up for.</span><span class="de">Keine Analyse, keine Telemetrie, keine Konten. Es gibt nichts, wofür du dich registrieren musst.</span></p></li>
+        <li><h3><span class="en">Only your servers</span><span class="de">Nur deine Server</span></h3><p><span class="en">ShareMount talks to your own SMB servers and, to look for updates, to GitHub. Nothing else.</span><span class="de">ShareMount spricht mit deinen eigenen SMB-Servern und, um nach Updates zu suchen, mit GitHub. Sonst mit niemandem.</span></p></li>
+        <li><h3><span class="en">No passwords stored</span><span class="de">Keine Passwörter gespeichert</span></h3><p><span class="en">Passwords stay in the macOS keychain and are only ever used by macOS itself.</span><span class="de">Passwörter bleiben im macOS-Schlüsselbund und werden nur von macOS selbst benutzt.</span></p></li>
+        <li><h3><span class="en">Plain files</span><span class="de">Einfache Dateien</span></h3><p><span class="en">Your shares live in a readable <code>shares.json</code>, the log in <code>~/Library/Logs</code>.</span><span class="de">Deine Freigaben stehen in einer lesbaren <code>shares.json</code>, das Protokoll in <code>~/Library/Logs</code>.</span></p></li>
       </ul>
     </div>
   </section>
 
   <section id="install" aria-labelledby="i-h">
-    <h2 id="i-h" class="display">Install in a minute.</h2>
-    <p class="lead">ShareMount is open source and signed locally, not notarized by Apple, so macOS asks once before the first launch.</p>
+    <h2 id="i-h" class="display"><span class="en">Install in a minute.</span><span class="de">In einer Minute installiert.</span></h2>
+    <p class="lead"><span class="en">ShareMount is open source and signed locally, not notarized by Apple, so macOS asks once before the first launch.</span><span class="de">ShareMount ist Open Source und lokal signiert, nicht von Apple beglaubigt. Deshalb fragt macOS vor dem ersten Start einmal nach.</span></p>
     <ol class="steps">
-      <li><h3>Download</h3><p>Get <code>ShareMount.zip</code> from the <a href="https://github.com/SH1FT-W/sharemount/releases/latest">latest release</a> and unzip it.</p></li>
-      <li><h3>Move to Applications</h3><p>Drag <code>ShareMount.app</code> into your Applications folder. Updates replace it there.</p></li>
-      <li><h3>Allow the first launch</h3><p>Open it, then go to System Settings › Privacy &amp; Security and click Open Anyway. Or in Terminal:</p>
+      <li><h3><span class="en">Download</span><span class="de">Laden</span></h3><p><span class="en">Get <code>ShareMount.zip</code> from the <a href="https://github.com/SH1FT-W/sharemount/releases/latest">latest release</a> and unzip it.</span><span class="de">Lade <code>ShareMount.zip</code> aus dem <a href="https://github.com/SH1FT-W/sharemount/releases/latest">neuesten Release</a> und entpacke es.</span></p></li>
+      <li><h3><span class="en">Move to Applications</span><span class="de">In „Programme“ bewegen</span></h3><p><span class="en">Drag <code>ShareMount.app</code> into your Applications folder. Updates replace it there.</span><span class="de">Zieh <code>ShareMount.app</code> in deinen Ordner „Programme“. Updates ersetzen sie dort.</span></p></li>
+      <li><h3><span class="en">Allow the first launch</span><span class="de">Ersten Start erlauben</span></h3><p><span class="en">Open it, then go to System Settings › Privacy &amp; Security and click Open Anyway. Or in Terminal:</span><span class="de">Öffne sie, geh dann zu Systemeinstellungen › Datenschutz &amp; Sicherheit und klicke auf „Dennoch öffnen“. Oder im Terminal:</span></p>
         <pre><code>xattr -dr com.apple.quarantine /Applications/ShareMount.app</code></pre></li>
-      <li><h3>Add your shares</h3><p>Add them in Settings or adopt the ones already mounted in the Finder. Sign in once with “Remember this password in my keychain”.</p></li>
+      <li><h3><span class="en">Add your shares</span><span class="de">Freigaben hinzufügen</span></h3><p><span class="en">Add them in Settings or adopt the ones already mounted in the Finder. Sign in once with “Remember this password in my keychain”.</span><span class="de">Füge sie in den Einstellungen hinzu oder übernimm die, die im Finder schon verbunden sind. Melde dich einmal mit „Dieses Passwort im Schlüsselbund sichern“ an.</span></p></li>
     </ol>
-    <p class="req">Requires macOS 14 or later on Apple silicon. English and German interface. Prefer to build it yourself? See the <a href="https://github.com/SH1FT-W/sharemount#build-from-source">README</a>.</p>
+    <p class="req"><span class="en">Requires macOS 14 or later on Apple silicon. English and German interface. Prefer to build it yourself? See the <a href="https://github.com/SH1FT-W/sharemount#build-from-source">README</a>.</span><span class="de">Braucht macOS 14 oder neuer auf einem Mac mit Apple Chip. Oberfläche auf Deutsch und Englisch. Lieber selbst bauen? Siehe <a href="https://github.com/SH1FT-W/sharemount#build-from-source">README</a>.</span></p>
   </section>
 
   <footer>
-    <span>ShareMount by <a href="https://sh1ft-w.github.io/">SH1FT-W</a></span>
-    <a href="https://github.com/SH1FT-W/sharemount">Source on GitHub</a>
-    <a href="https://github.com/SH1FT-W/sharemount/blob/main/LICENSE">MIT License</a>
-    <span>No tracking on this site.</span>
+    <span><span class="en">ShareMount by</span><span class="de">ShareMount von</span> <a href="https://sh1ft-w.github.io/">SH1FT-W</a></span>
+    <a href="https://github.com/SH1FT-W/sharemount"><span class="en">Source on GitHub</span><span class="de">Quellcode auf GitHub</span></a>
+    <a href="https://github.com/SH1FT-W/sharemount/blob/main/LICENSE"><span class="en">MIT License</span><span class="de">MIT-Lizenz</span></a>
+    <span><span class="en">No tracking on this site.</span><span class="de">Kein Tracking auf dieser Seite.</span></span>
   </footer>
 </main>
+<script>
+  (function () {
+    var titles = { en: "ShareMount", de: "ShareMount" };
+    function apply(l) {
+      document.documentElement.lang = l;
+      document.title = titles[l];
+      document.querySelectorAll(".lang button").forEach(function (b) { b.classList.toggle("on", b.dataset.l === l); });
+    }
+    document.querySelectorAll(".lang button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        try { localStorage.setItem("sh1ftw-lang", b.dataset.l); } catch (e) {}
+        apply(b.dataset.l);
+      });
+    });
+    apply(document.documentElement.lang);
+  })();
+</script>
 </body>
 </html>
