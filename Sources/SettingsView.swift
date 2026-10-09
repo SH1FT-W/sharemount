@@ -313,7 +313,7 @@ struct UpdatesTab: View {
                 HStack {
                     Button(L("Jetzt suchen", "Check Now")) { Task { await updater.check() } }
                     if case .available(let v) = updater.state {
-                        Button(L("v\(v) installieren", "Install v\(v)")) { Task { await updater.install() } }.buttonStyle(.borderedProminent)
+                        Button(L("v\(v) installieren", "Install v\(v)")) { Task { await updater.install() } }.glassProminentButton()
                     }
                 }
                 Toggle(L("Automatisch suchen (alle 6 Std.)", "Check automatically (every 6 hours)"), isOn: $prefs.autoCheckUpdates)

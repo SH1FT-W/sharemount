@@ -52,7 +52,24 @@ struct ToggleRow: View {
     }
 }
 
+/// Karten- und Zeilenform im Menü: ab macOS 26 konzentrisch zu den Fensterecken (folgt dem System,
+/// auch den in macOS 27 vereinheitlichten Ecken), `minimum` hält den bisherigen Radius als Untergrenze.
+func cardShape(_ minimum: CGFloat) -> AnyShape {
+    if #available(macOS 26.0, *) {
+        return AnyShape(ConcentricRectangle(corners: .concentric(minimum: .fixed(minimum)), isUniform: true))
+    }
+    return AnyShape(RoundedRectangle(cornerRadius: minimum, style: .continuous))
+}
+
 extension View {
+    /// macOS 26/27: Liquid-Glass-Button, auf älteren Systemen normal umrandet.
+    @ViewBuilder func glassButton() -> some View {
+        if #available(macOS 26.0, *) { self.buttonStyle(.glass) } else { self.buttonStyle(.bordered) }
+    }
+    /// Hervorgehobener Glas-Button (Akzentfarbe) für die eine empfohlene Aktion.
+    @ViewBuilder func glassProminentButton() -> some View {
+        if #available(macOS 26.0, *) { self.buttonStyle(.glassProminent) } else { self.buttonStyle(.borderedProminent) }
+    }
     /// macOS 26/27: runder Liquid-Glass-Button, auf älteren Systemen randlos.
     @ViewBuilder func glassCircleButton() -> some View {
         if #available(macOS 26.0, *) {
@@ -86,7 +103,7 @@ struct MenuItem: View {
             }
             .foregroundStyle(hl ? Color.white : enabled ? Color.primary : Color.secondary)
             .padding(.horizontal, 9).frame(height: 24)
-            .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(hl ? Color.accentColor : .clear))
+            .background(cardShape(7).fill(hl ? Color.accentColor : .clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -109,13 +126,13 @@ struct NoticeRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(text).font(.system(size: 11.5)).fixedSize(horizontal: false, vertical: true)
                 if let action {
-                    Button(action.title, action: action.run).controlSize(.small)
+                    Button(action.title, action: action.run).controlSize(.small).glassButton()
                 }
             }
             Spacer(minLength: 0)
         }
         .padding(8)
-        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(tint.opacity(0.12)))
+        .background(cardShape(8).fill(tint.opacity(0.12)))
         .padding(.horizontal, 9).padding(.vertical, 3)
     }
 }

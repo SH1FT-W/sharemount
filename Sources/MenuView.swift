@@ -202,7 +202,7 @@ struct ShareRow: View {
             }
         }
         .padding(.horizontal, 9).padding(.vertical, 6)
-        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.primary.opacity(hover ? 0.08 : 0)))
+        .background(cardShape(8).fill(Color.primary.opacity(hover ? 0.08 : 0)))
         .contentShape(Rectangle())
         .onTapGesture {
             if status == .authFailed { engine.signIn(share) } else { engine.open(share) }

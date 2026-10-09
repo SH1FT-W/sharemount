@@ -72,7 +72,7 @@ struct UpdatePromptView: View {
                     Button(L("Später", "Remind Me Later"), action: close).keyboardShortcut(.cancelAction)
                     Button(L("Jetzt installieren", "Install Now")) { Task { await updater.install() } }
                         .keyboardShortcut(.defaultAction)
-                        .buttonStyle(.borderedProminent)
+                        .glassProminentButton()
                 }
                 .disabled(installing)
                 .padding(.top, 4)
