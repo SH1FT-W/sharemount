@@ -55,6 +55,50 @@ final class Updater: ObservableObject {
             }
         }
         showNotesAfterUpdate()
+        // Mehrere Benutzer teilen sich /Applications/ShareMount.app. Hat ein anderer Benutzer aktualisiert,
+        // liegt eine neue Version auf der Platte, während hier noch die alte läuft → selbst neu starten.
+        bundleTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.restartIfReplaced() }
+        }
+    }
+
+    private var bundleTimer: Timer?
+    private let runningBuild = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+    private let runningStamp = Updater.executableStamp()
+
+    /// Änderungsdatum des Programms – erkennt auch einen Neubau mit gleicher Build-Nummer (./build.sh install).
+    private static func executableStamp() -> Date? {
+        guard let path = Bundle.main.executableURL?.path else { return nil }
+        return (try? FileManager.default.attributesOfItem(atPath: path))?[.modificationDate] as? Date
+    }
+
+    private func restartIfReplaced() {
+        if case .installing = state { return }
+        let plist = Bundle.main.bundleURL.appendingPathComponent("Contents/Info.plist")
+        // Fehlt die Datei kurz (Tausch läuft gerade), beim nächsten Mal.
+        guard let info = NSDictionary(contentsOf: plist),
+              let build = info["CFBundleVersion"] as? String,
+              FileManager.default.isExecutableFile(atPath: Bundle.main.executableURL?.path ?? ""),
+              let stamp = Self.executableStamp(),
+              build != runningBuild || stamp != runningStamp else { return }
+        let version = info["CFBundleShortVersionString"] as? String ?? "?"
+        bundleTimer?.invalidate()
+        Log.write(L("ShareMount v\(version) wurde installiert (z. B. von einem anderen Benutzer), starte neu",
+                    "ShareMount \(version) was installed (e.g. by another user), restarting"))
+        Prefs.shared.pendingNotes = (version, L("Von einem anderen Benutzer dieses Macs aktualisiert.", "Updated by another user on this Mac."))
+        relaunch()
+    }
+
+    /// Wartet, bis dieser Prozess beendet ist, und öffnet die App neu (Mounts bleiben dabei bestehen).
+    private func relaunch() {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        p.arguments = ["-f", "-c", "while kill -0 \"$1\" 2>/dev/null; do sleep 0.2; done; sleep 0.5; open \"$2\"", "relaunch",
+                       "\(ProcessInfo.processInfo.processIdentifier)", Bundle.main.bundleURL.path]
+        p.standardOutput = FileHandle.nullDevice
+        p.standardError = FileHandle.nullDevice
+        guard (try? p.run()) != nil else { return }
+        NSApp.terminate(nil)
     }
 
     /// Token aus den Einstellungen speichern (statt per Terminal). Leer = löschen.
@@ -188,8 +232,20 @@ final class Updater: ObservableObject {
             let newVersion = Bundle(url: newApp)?.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
             guard newVersion == release.version else { throw Fail(L("Versionsnummer passt nicht zum Release", "Version number does not match the release")) }
 
-            state = .installing(L("Starte neu …", "Restarting…"))
             Prefs.shared.pendingNotes = (release.version, release.notes)
+            if Self.needsAdmin(Bundle.main.bundleURL) {
+                // App gehört einem anderen Benutzer (z. B. dem, der sie installiert hat) → macOS fragt nach
+                // einem Administrator-Passwort, getauscht wird sofort, danach nur neu starten.
+                state = .installing(L("Warte auf Administrator-Passwort …", "Waiting for administrator password…"))
+                do { try await adminSwap(newApp: newApp, work: work) }
+                catch { Prefs.shared.pendingNotes = nil; throw error }
+                state = .installing(L("Starte neu …", "Restarting…"))
+                Log.write(L("Update auf v\(release.version) mit Administrator-Rechten installiert, starte neu", "Update to v\(release.version) installed with administrator rights, restarting"))
+                try? FileManager.default.removeItem(at: work)
+                relaunch()
+                return
+            }
+            state = .installing(L("Starte neu …", "Restarting…"))
             try launchSwapScript(newApp: newApp, work: work)
             Log.write(L("Update auf v\(release.version) geprüft, App wird ersetzt und neu gestartet", "Update to v\(release.version) verified, replacing and restarting the app"))
             NSApp.terminate(nil)
@@ -209,11 +265,49 @@ final class Updater: ObservableObject {
             return L("ShareMount läuft aus einem vorübergehenden Ort (macOS-Schutz für geladene Apps). ",
                      "ShareMount is running from a temporary location (macOS protection for downloaded apps). ") + move
         }
-        let fm = FileManager.default
-        if !fm.isWritableFile(atPath: app.deletingLastPathComponent().path) || !fm.isWritableFile(atPath: app.path) {
-            return L("Der Ordner mit ShareMount ist nicht beschreibbar. ", "The folder containing ShareMount is not writable. ") + move
+        // Nicht beschreibbar (App gehört einem anderen Benutzer) geht mit Administrator-Passwort – nur ein
+        // schreibgeschütztes Volume (z. B. Start direkt aus einem Disk-Image) nicht.
+        var fs = statfs()
+        if statfs(app.path, &fs) == 0, fs.f_flags & UInt32(MNT_RDONLY) != 0 {
+            return L("ShareMount liegt auf einem schreibgeschützten Volume. ", "ShareMount is on a read-only volume. ") + move
         }
         return nil
+    }
+
+    /// Darf dieser Benutzer die App selbst ersetzen? Sonst (anderer Besitzer) per Administrator-Passwort.
+    private static func needsAdmin(_ app: URL) -> Bool {
+        let fm = FileManager.default
+        return !fm.isWritableFile(atPath: app.deletingLastPathComponent().path) || !fm.isWritableFile(atPath: app.path)
+    }
+
+    /// Tausch mit Administrator-Rechten (macOS-Passwortdialog). Besitzer und Gruppe der alten App bleiben erhalten,
+    /// damit der Benutzer, der sie installiert hat, weiter ohne Passwort aktualisieren kann.
+    private func adminSwap(newApp: URL, work: URL) async throws {
+        let script = work.appendingPathComponent("adminswap.sh")
+        try """
+        #!/bin/zsh -f
+        TARGET="$1"; NEW="$2"; OLD="$1.alt"
+        OWNER=$(stat -f %u:%g "$TARGET") || exit 1
+        rm -rf "$OLD"
+        if mv "$TARGET" "$OLD" && mv "$NEW" "$TARGET" && chown -R "$OWNER" "$TARGET"; then
+            rm -rf "$OLD"
+        else
+            [[ -d "$OLD" && ! -d "$TARGET" ]] && mv "$OLD" "$TARGET"
+            exit 1
+        fi
+        """.write(to: script, atomically: true, encoding: .utf8)
+        let prompt = L("ShareMount möchte sich aktualisieren.", "ShareMount wants to install an update.")
+        // Pfade als Argumente (argv), nie in den AppleScript-Text eingesetzt.
+        let ok = await Shell.run("/usr/bin/osascript", [
+            "-e", "on run argv",
+            "-e", "do shell script \"/bin/zsh -f \" & quoted form of item 1 of argv & \" \" & quoted form of item 2 of argv & \" \" & quoted form of item 3 of argv with prompt item 4 of argv with administrator privileges",
+            "-e", "end run",
+            script.path, Bundle.main.bundleURL.path, newApp.path, prompt,
+        ], timeout: 300)
+        guard ok else {
+            Log.write(L("Update: Administrator-Tausch abgebrochen oder fehlgeschlagen", "Update: administrator swap cancelled or failed"))
+            throw Fail(L("Kein Administrator-Passwort eingegeben oder Ersetzen fehlgeschlagen", "No administrator password entered, or replacing failed"))
+        }
     }
 
     /// Gleiche Bundle-ID und gültige (ad-hoc-)Signatur. Ein festes Zertifikat gibt es bewusst nicht mehr –

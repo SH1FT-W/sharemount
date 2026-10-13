@@ -38,6 +38,9 @@ struct SelfTest {
                       MountInfo(host: "192.168.1.10", share: "Projects", user: "Alex", path: "/Volumes/Projects")]
         expect(Mounter.find(s, in: mounts)?.path == "/Volumes/Projects", "sauberer Pfad gewinnt")
         expect(Mounter.find(s, in: [mounts[0]])?.path == "/Volumes/Projects-1", "Groß/Klein egal")
+        expect(Mounter.current().allSatisfy { $0.owner == getuid() }, "nur eigene Mounts (Benutzerwechsel)")
+        expect(getuid() == 0 || Mounter.isForeignMountPoint("/"), "fremder Einhängepunkt erkannt (/ gehört root)")
+        expect(!Mounter.isForeignMountPoint("/gibt/es/nicht"), "kein Einhängepunkt → nicht fremd")
 
         print("Konfiguration")
         let old = #"[{"host":"h","share":"s","user":"u","enabled":false,"id":"80957294-8D27-4619-8EC7-D2C2AE1AA73C"}]"#

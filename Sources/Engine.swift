@@ -82,6 +82,12 @@ final class Engine: ObservableObject {
                 self.schedule(after: 5)
             }
         }
+        // Zurück aus dem Hintergrund (Benutzerwechsel): Anzeige gleich auffrischen.
+        Session.start { [weak self] in
+            guard let self, !self.frozen else { return }
+            self.refreshCredentials()
+            self.schedule(after: 1)
+        }
         pathMonitor.pathUpdateHandler = { [weak self] path in
             // Nur echte Wechsel zählen (Schnittstelle, Gateway, online/offline) –
             // macOS meldet sonst auch Kleinkram und beim Start gleich mehrfach.
@@ -355,8 +361,10 @@ final class Engine: ObservableObject {
             else { status[s.id] = .stale }
             return
         }
-        await Mounter.waitUntilFree(s.cleanMountPath, timeout: 3)
-        Mounter.clearLeftover(s.cleanMountPath)
+        if !Mounter.isForeignMountPoint(s.cleanMountPath) {
+            await Mounter.waitUntilFree(s.cleanMountPath, timeout: 3)
+            Mounter.clearLeftover(s.cleanMountPath)
+        }
         let (result, pw) = await mountWithStoredCredentials(s)
         switch result {
         case .success(var path):
@@ -416,6 +424,11 @@ final class Engine: ObservableObject {
     private func fixFreshMountPath(_ s: Share, _ path: String) async -> String {
         let clean = s.cleanMountPath
         guard path != clean else { return path }
+        if Mounter.isForeignMountPoint(clean) {
+            Log.write("\(s.displayName): " + L("\(clean) gehört einem anderen Benutzer dieses Macs, daher \(path)",
+                                                      "\(clean) belongs to another user on this Mac, so \(path)"))
+            return path
+        }
         await Mounter.waitUntilFree(clean, timeout: 4)
         guard !Mounter.isMountPoint(clean), Mounter.clearLeftover(clean) else { return path }
         guard await Mounter.unmount(path, force: false) else { return path }
@@ -458,7 +471,9 @@ final class Engine: ObservableObject {
 
     private func noteBlockedPath(_ s: Share, _ path: String) {
         let clean = s.cleanMountPath
-        misplaced[s.id] = path != clean && !FileManager.default.fileExists(atPath: clean) ? path : nil
+        // Liegt unter dem sauberen Pfad der Mount eines anderen Benutzers, ist „Name-1“ richtig – kein Hinweis.
+        misplaced[s.id] = path != clean && !FileManager.default.fileExists(atPath: clean)
+            && !Mounter.isForeignMountPoint(clean) ? path : nil
         if path != clean, FileManager.default.fileExists(atPath: clean), !Mounter.isMountPoint(clean) {
             if blockedPaths[s.id] != clean {
                 Log.write("\(s.displayName): " + L("\(clean) ist ein verwaister Ordner (nur mit sudo rmdir zu entfernen)",

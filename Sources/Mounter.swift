@@ -7,6 +7,9 @@ struct MountInfo: Equatable {
     let share: String
     let user: String
     let path: String
+    /// Wer den Mount angelegt hat. Bei mehreren angemeldeten Benutzern (schneller Benutzerwechsel)
+    /// sieht jeder alle Mounts des Macs – fremde darf ShareMount weder anzeigen, prüfen noch lösen.
+    var owner: uid_t = getuid()
 }
 
 /// Alles, was blockieren kann, läuft hier im Hintergrund und immer mit Zeitlimit.
@@ -14,12 +17,14 @@ enum Mounter {
 
     // MARK: Aktuelle Mounts (MNT_NOWAIT = fragt den Server nicht, blockiert nie)
 
-    /// Nur Mounts, die dem Benutzer gehören. Time Machine bindet dieselbe Freigabe zusätzlich
+    /// Nur Mounts, die dem Benutzer gehören (bis 2.4 auch die anderer angemeldeter Benutzer: die wurden
+    /// als „verbunden“ angezeigt, ließen sich nicht lesen und sollten dann gelöst werden). Time Machine bindet dieselbe Freigabe zusätzlich
     /// unsichtbar unter /Volumes/.timemachine ein (nobrowse) – die fassen wir nie an: bis 1.7 wurde
     /// dieser Mount gelegentlich für „unseren“ gehalten, geprüft und zwangsweise gelöst.
     static func current() -> [MountInfo] {
         var result: [MountInfo] = []
-        for var s in table() {
+        let me = getuid()
+        for var s in table() where s.f_owner == me {
             guard cString(&s.f_fstypename) == "smbfs" else { continue }
             let on = cString(&s.f_mntonname)
             if s.f_flags & UInt32(MNT_DONTBROWSE) != 0 || on.hasPrefix("/Volumes/.") { continue }
@@ -63,6 +68,13 @@ enum Mounter {
     /// Ist der Pfad gerade irgendein Einhängepunkt? (MNT_NOWAIT – blockiert nie)
     static func isMountPoint(_ path: String) -> Bool {
         table().contains { var s = $0; return cString(&s.f_mntonname) == path }
+    }
+
+    /// Hat ein anderer Benutzer dieses Macs hier etwas eingebunden? Dann ist „Name-1“ für uns der richtige Ort –
+    /// /Volumes ist für alle Benutzer gemeinsam, derselbe Name geht nur einmal.
+    static func isForeignMountPoint(_ path: String) -> Bool {
+        let me = getuid()
+        return table().contains { var s = $0; return s.f_owner != me && cString(&s.f_mntonname) == path }
     }
 
     /// Eigener Puffer statt getmntinfo – dessen statischer Puffer ist nicht threadsicher,

@@ -7,6 +7,8 @@ enum UpdatePrompt {
     private static var window: NSWindow?
 
     static func show(_ updater: Updater) {
+        // Andere Sitzung vorne: erst zeigen, wenn dieser Benutzer zurückwechselt.
+        guard Session.isActive else { Session.whenActive { show(updater) }; return }
         if let window, window.isVisible {
             NSApp.activate(ignoringOtherApps: true)
             window.makeKeyAndOrderFront(nil)
