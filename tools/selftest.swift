@@ -60,6 +60,11 @@ struct SelfTest {
         expect(Updater.isNewer("1.10", than: "1.9"), "1.10 > 1.9")
         expect(!Updater.isNewer("1.7", than: "1.7.0"), "1.7 = 1.7.0")
         expect(!Updater.isNewer("1.6.9", than: "1.7"), "1.6.9 < 1.7")
+        expect(Updater.isNewer("26.10.4", than: "2.5"), "Kalender-Version 26.10.4 > 2.5")
+        expect(Updater.isNewer("26.10.10", than: "26.10.9"), "26.10.10 > 26.10.9")
+        expect(!Updater.isNewer("26.10.9", than: "26.10.10"), "26.10.9 < 26.10.10")
+        expect(Updater.isNewer("26.10.1", than: "26.9.12"), "26.10.1 > 26.9.12")
+        expect(Updater.isNewer("27.1.1", than: "26.12.30"), "27.1.1 > 26.12.30")
         expect(AppInfo.bundleID == "io.github.sh1ft-w.sharemount", "Updater erwartet die Bundle-ID der App")
         expect(Updater.cleanNotes("## Neu\n- **Fix** `x`\n\n\n\nEnde") == "Neu\n• Fix x\n\nEnde", "Markdown → Text")
 
