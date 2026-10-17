@@ -3,272 +3,590 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ShareMount</title>
+<title>ShareMount for the Mac</title>
 <script src="https://sh1ft-w.github.io/bar.js" data-project="sharemount" defer></script>
-<meta name="description" content="A small macOS menu bar app that keeps your SMB shares mounted and reconnects them after sleep, network changes and NAS restarts.">
-<meta property="og:title" content="ShareMount">
-<meta property="og:description" content="Keeps your SMB shares mounted. Reconnects after sleep, network changes and NAS restarts.">
+<meta name="description" content="ShareMount is a small macOS menu bar app that keeps your SMB shares mounted. It reconnects them after sleep, network changes and NAS restarts, using the passwords macOS already keeps for the Finder.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f3f6fc" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0f17" media="(prefers-color-scheme: dark)">
+<meta property="og:title" content="ShareMount for the Mac">
+<meta property="og:description" content="Keeps your SMB shares mounted. Reconnects after sleep, network changes and NAS restarts, right from the menu bar.">
 <meta property="og:image" content="https://sh1ft-w.github.io/sharemount/icon.png">
-<meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="icon" type="image/png" href="icon.png">
 <style>
-  :root {
-    --bg: #f5f5f7; --ink: #1d1d1f; --ink-2: #6e6e73; --line: #d2d2d7; --tile: #fff; --tile-ring: rgba(0,0,0,.06);
-    --link: #0066cc; --accent: #0071e3; --pill: rgba(0,0,0,.05);
-    --shot-shadow: 0 1px 2px rgba(0,0,0,.06), 0 18px 50px rgba(0,0,0,.14);
-    color-scheme: light;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #000; --ink: #f5f5f7; --ink-2: #a1a1a6; --line: #38383b; --tile: #1c1c1e; --tile-ring: rgba(255,255,255,.08);
-      --link: #2997ff; --accent: #0a84ff; --pill: rgba(255,255,255,.09);
-      --shot-shadow: 0 0 0 1px rgba(255,255,255,.1), 0 18px 50px rgba(0,0,0,.7);
-      color-scheme: dark;
-    }
-  }
-  :root[data-theme="dark"] {
-    --bg: #000; --ink: #f5f5f7; --ink-2: #a1a1a6; --line: #38383b; --tile: #1c1c1e; --tile-ring: rgba(255,255,255,.08);
-    --link: #2997ff; --accent: #0a84ff; --pill: rgba(255,255,255,.09);
-    --shot-shadow: 0 0 0 1px rgba(255,255,255,.1), 0 18px 50px rgba(0,0,0,.7);
-    color-scheme: dark;
-  }
+/* ShareMount-Palette: das Blau des App-Icons; Dunkel folgt dem System oder dem Schalter oben rechts */
+:root {
+  --bg: #f3f6fc; --bg-2: #e9eef8; --card: #ffffff; --card-2: #eef2fa;
+  --ink: #141a26; --ink-2: #5b6474; --ink-3: rgba(20,26,38,0.5);
+  --blue: #3b7ced; --blue-fill: #4a86f0; --blue-tint: rgba(74,134,240,0.12); --blue-glow: rgba(74,134,240,0.32); --on-blue: #ffffff;
+  --teal: #1f9d8c; --teal-tint: rgba(31,157,140,0.13);
+  --line: rgba(60,80,120,0.14); --chip: rgba(60,90,150,0.08);
+  --glass: rgba(255,255,255,0.68); --glass-line: rgba(255,255,255,0.7);
+  --shadow: 0 1px 2px rgba(30,50,90,0.05), 0 12px 32px -14px rgba(30,50,90,0.22);
+  --shadow-lg: 0 2px 6px rgba(30,50,90,0.05), 0 48px 100px -36px rgba(20,40,90,0.4);
+  --radius: 28px; --radius-lg: 36px; --gutter: clamp(16px, 5vw, 48px); --max: 1180px;
+  --blob-1: rgba(74,134,240,0.26); --blob-2: rgba(31,157,140,0.16); --blob-3: rgba(170,200,255,0.5);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0b0f17; --bg-2: #0e131c; --card: #151b27; --card-2: #1b2230;
+  --ink: #eef2f8; --ink-2: rgba(200,210,228,0.86); --ink-3: rgba(200,210,228,0.55);
+  --blue: #7aa8ff; --blue-fill: #4a86f0; --blue-tint: rgba(122,168,255,0.14); --blue-glow: rgba(74,134,240,0.3); --on-blue: #ffffff;
+  --teal: #5ecdbd; --teal-tint: rgba(94,205,189,0.14);
+  --line: rgba(200,210,228,0.12); --chip: rgba(200,210,228,0.08);
+  --glass: rgba(21,27,39,0.66); --glass-line: rgba(255,255,255,0.08);
+  --shadow: 0 14px 34px -16px rgba(0,0,0,0.6); --shadow-lg: 0 48px 100px -36px rgba(0,0,0,0.8);
+  --blob-1: rgba(74,134,240,0.22); --blob-2: rgba(94,205,189,0.12); --blob-3: rgba(40,70,140,0.3);
+} }
+:root[data-theme="dark"] {
+  --bg: #0b0f17; --bg-2: #0e131c; --card: #151b27; --card-2: #1b2230;
+  --ink: #eef2f8; --ink-2: rgba(200,210,228,0.86); --ink-3: rgba(200,210,228,0.55);
+  --blue: #7aa8ff; --blue-fill: #4a86f0; --blue-tint: rgba(122,168,255,0.14); --blue-glow: rgba(74,134,240,0.3); --on-blue: #ffffff;
+  --teal: #5ecdbd; --teal-tint: rgba(94,205,189,0.14);
+  --line: rgba(200,210,228,0.12); --chip: rgba(200,210,228,0.08);
+  --glass: rgba(21,27,39,0.66); --glass-line: rgba(255,255,255,0.08);
+  --shadow: 0 14px 34px -16px rgba(0,0,0,0.6); --shadow-lg: 0 48px 100px -36px rgba(0,0,0,0.8);
+  --blob-1: rgba(74,134,240,0.22); --blob-2: rgba(94,205,189,0.12); --blob-3: rgba(40,70,140,0.3);
+}
 
-  * { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; }
-  body { margin: 0; background: var(--bg); color: var(--ink);
-    font: 17px/1.47 -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", Roboto, system-ui, sans-serif;
-    letter-spacing: -.022em; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-  a { color: var(--link); text-decoration: none; }
-  a:hover { text-decoration: underline; text-underline-offset: 3px; }
-  a:focus-visible { outline: 3px solid color-mix(in srgb, var(--link) 60%, transparent); outline-offset: 2px; border-radius: 6px; }
-  .wrap { max-width: 980px; margin: 0 auto; padding: 0 max(24px, env(safe-area-inset-right)) 0 max(24px, env(safe-area-inset-left)); }
-  .display { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, system-ui, sans-serif; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 96px; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 400 17px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", Roboto, system-ui, sans-serif;
+  letter-spacing: -0.012em; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; overflow-x: hidden;
+}
+img { display: block; max-width: 100%; height: auto; }
+a { color: var(--blue); text-decoration: none; }
+a:hover { text-decoration: underline; text-underline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 8px; }
+.wrap { max-width: var(--max); margin: 0 auto; padding: 0 var(--gutter); }
+.narrow { max-width: 760px; }
+p { margin: 0; }
+.muted { color: var(--ink-2); }
+.center { text-align: center; }
+.center .lead { margin-left: auto; margin-right: auto; max-width: 680px; }
+code { font: 500 0.88em/1.4 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0; background: var(--chip); padding: 2px 6px; border-radius: 6px; overflow-wrap: anywhere; }
 
-  /* Hero */
-  .hero { text-align: center; padding: 104px 0 8px; }
-  .hero .icon { width: 128px; height: 128px; display: block; margin: 0 auto 20px; }
-  h1 { font-size: 72px; line-height: 1.05; font-weight: 700; letter-spacing: -.035em; margin: 0 0 14px; }
-  .pitch { font-size: 28px; line-height: 1.18; font-weight: 600; letter-spacing: -.02em; margin: 0 auto 12px; max-width: 680px; text-wrap: balance; }
-  .sub { font-size: 19px; color: var(--ink-2); margin: 0 auto; max-width: 600px; text-wrap: pretty; }
-  .cta { display: flex; gap: 14px 28px; justify-content: center; align-items: center; flex-wrap: wrap; margin-top: 30px; }
-  .btn { display: inline-flex; align-items: center; height: 44px; padding: 0 24px; border-radius: 99px; background: var(--accent);
-    color: #fff; font-size: 17px; font-weight: 500; letter-spacing: -.01em; }
-  .btn:hover { text-decoration: none; filter: brightness(1.08); }
-  .btn:focus-visible { border-radius: 99px; }
-  .more { font-size: 17px; }
-  .more .chev, .btn .chev { margin-left: 3px; }
-  .meta { margin-top: 14px; font-size: 13px; color: var(--ink-2); letter-spacing: -.005em; }
+/* Schwebende Glas-Navigation */
+.navwrap { position: sticky; top: 12px; z-index: 10; padding: 0 var(--gutter); pointer-events: none; }
+.nav {
+  pointer-events: auto; max-width: var(--max); margin: 0 auto; height: 56px; padding: 0 10px 0 16px;
+  display: flex; align-items: center; gap: 20px; border-radius: 999px;
+  background: var(--glass); backdrop-filter: blur(22px) saturate(1.4); -webkit-backdrop-filter: blur(22px) saturate(1.4);
+  box-shadow: inset 0 0 0 1px var(--glass-line), var(--shadow);
+}
+.brand { display: flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 700; font-size: 17px; letter-spacing: -0.02em; }
+.brand:hover { text-decoration: none; }
+.brand img { width: 28px; height: 28px; }
+.nav-links { display: flex; gap: 4px; margin-left: auto; font-size: 14px; font-weight: 500; }
+.nav-links a { color: var(--ink-2); padding: 8px 12px; border-radius: 999px; transition: background .2s, color .2s; }
+.nav-links a:hover { color: var(--ink); background: var(--chip); text-decoration: none; }
+.iconbtn { flex: none; width: 36px; height: 36px; border-radius: 50%; border: 0; background: none; color: var(--ink-2); cursor: pointer; display: grid; place-items: center; transition: background .2s, color .2s; }
+.iconbtn:hover { background: var(--chip); color: var(--ink); }
+.iconbtn svg { width: 18px; height: 18px; }
+.iconbtn .sun, :root[data-theme="dark"] .iconbtn .moon { display: none; }
+:root[data-theme="dark"] .iconbtn .sun { display: block; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .iconbtn .moon { display: none; } :root:not([data-theme="light"]) .iconbtn .sun { display: block; } }
+:root[data-theme="light"] .iconbtn .moon { display: block; } :root[data-theme="light"] .iconbtn .sun { display: none; }
 
-  /* Screenshots */
-  .stage { display: flex; justify-content: center; align-items: flex-start; gap: 40px; margin: 64px auto 0; flex-wrap: wrap; }
-  .shot { margin: 0; }
-  .shot img { display: block; height: auto; border-radius: 14px; box-shadow: var(--shot-shadow); background: var(--tile); }
-  .shot.menu img { width: 330px; }
-  .shot.update img { width: 500px; border-radius: 12px; }
-  .stage .side { display: flex; flex-direction: column; gap: 22px; align-items: center; padding-top: 70px; }
-  .shot figcaption { margin-top: 14px; text-align: center; font-size: 14px; color: var(--ink-2); letter-spacing: -.01em; }
+/* Knöpfe */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 24px; border-radius: 999px;
+  font-family: inherit; font-size: 15px; font-weight: 600; line-height: 1; letter-spacing: -0.005em;
+  background: var(--blue-fill); color: var(--on-blue); border: 0; cursor: pointer;
+  box-shadow: 0 12px 28px -12px var(--blue-glow); transition: transform .2s ease, filter .2s ease, box-shadow .2s ease;
+}
+.btn:hover { text-decoration: none; filter: brightness(1.05); transform: translateY(-1px); box-shadow: 0 16px 32px -12px var(--blue-glow); }
+.btn.ghost { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+.btn.small { height: 36px; padding: 0 16px; font-size: 14px; }
+.btn svg { width: 16px; height: 16px; }
 
-  /* Sections */
-  section { padding-top: 112px; }
-  h2 { font-size: 48px; line-height: 1.08; font-weight: 700; letter-spacing: -.03em; margin: 0 0 12px; text-align: center; text-wrap: balance; }
-  .lead { text-align: center; font-size: 21px; line-height: 1.38; color: var(--ink-2); max-width: 640px; margin: 0 auto 48px; text-wrap: pretty; }
+/* Schrift */
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--blue); margin: 0 0 18px; }
+.eyebrow::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--blue); box-shadow: 0 0 0 4px var(--blue-tint); }
+h1, h2, h3 { margin: 0; color: var(--ink); font-weight: 800; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, system-ui, sans-serif; }
+h1 { font-size: clamp(48px, 8.4vw, 104px); line-height: 0.98; letter-spacing: -0.045em; }
+h1 em { font-style: normal; color: var(--blue); }
+h2 { font-size: clamp(36px, 5.4vw, 64px); line-height: 1.02; letter-spacing: -0.04em; }
+h3 { font-size: 21px; line-height: 1.2; letter-spacing: -0.02em; font-weight: 700; }
+.lead { font-size: clamp(19px, 2.1vw, 23px); line-height: 1.45; color: var(--ink-2); letter-spacing: -0.012em; margin: 24px 0 0; }
+.lead strong { color: var(--ink); font-weight: 600; }
 
-  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-  .card { background: var(--tile); border-radius: 22px; padding: 28px 26px 30px; box-shadow: inset 0 0 0 1px var(--tile-ring); }
-  .card svg { width: 30px; height: 30px; display: block; margin-bottom: 16px; color: var(--accent); }
-  .card h3 { font-size: 19px; line-height: 1.25; font-weight: 600; letter-spacing: -.015em; margin: 0 0 6px; }
-  .card p { margin: 0; font-size: 15px; line-height: 1.47; color: var(--ink-2); letter-spacing: -.01em; }
+/* Abschnitte */
+section { padding: clamp(72px, 9vw, 128px) 0; position: relative; }
+section.tint { background: var(--bg-2); }
+.head { margin-bottom: clamp(40px, 5.5vw, 64px); }
+.split h2 { font-size: clamp(34px, 4.4vw, 56px); }
 
-  .wide { margin-top: 56px; text-align: center; }
-  .wide img { display: block; margin: 0 auto; width: 600px; max-width: 100%; height: auto; border-radius: 14px; box-shadow: var(--shot-shadow); }
+/* Einblenden beim Scrollen (?still in der Adresse schaltet es ab, z. B. für Bildschirmfotos) */
+html.still .reveal { opacity: 1; transform: none; transition: none; }
+.reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1); }
+.reveal.in { opacity: 1; transform: none; }
+.reveal.d1 { transition-delay: .08s; } .reveal.d2 { transition-delay: .16s; } .reveal.d3 { transition-delay: .24s; }
 
-  /* Privacy */
-  .privacy { background: var(--tile); border-radius: 28px; padding: 56px 48px; box-shadow: inset 0 0 0 1px var(--tile-ring); }
-  .privacy h2 { margin-bottom: 36px; }
-  .plist { display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px 48px; list-style: none; margin: 0; padding: 0; }
-  .plist h3 { font-size: 17px; font-weight: 600; margin: 0 0 4px; letter-spacing: -.015em; }
-  .plist p { margin: 0; color: var(--ink-2); font-size: 15px; letter-spacing: -.01em; }
-  code { font: 14px/1.4 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0; background: var(--pill); padding: 1px 6px; border-radius: 6px; }
+/* Bildrahmen */
+.shot { border-radius: 22px; overflow: hidden; background: var(--card); box-shadow: var(--shadow-lg); position: relative; }
+.shot::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px var(--glass-line); pointer-events: none; }
+.shot img { width: 100%; }
+.cap { margin-top: 18px; font-size: 15px; color: var(--ink-3); text-align: center; }
 
-  /* Install */
-  .steps { counter-reset: s; list-style: none; margin: 0 auto; padding: 0; max-width: 680px; }
-  .steps li { counter-increment: s; position: relative; padding: 0 0 26px 56px; }
-  .steps li::before { content: counter(s); position: absolute; left: 0; top: -2px; width: 34px; height: 34px; border-radius: 50%;
-    background: var(--pill); color: var(--ink); font-weight: 600; font-size: 16px; display: grid; place-items: center; letter-spacing: 0; }
-  .steps h3 { font-size: 19px; font-weight: 600; margin: 0 0 4px; letter-spacing: -.015em; }
-  .steps p { margin: 0; color: var(--ink-2); font-size: 16px; }
-  .steps pre { margin: 10px 0 0; padding: 12px 16px; border-radius: 12px; background: var(--tile); box-shadow: inset 0 0 0 1px var(--tile-ring); overflow-x: auto; }
-  .steps pre code { background: none; padding: 0; font-size: 13px; }
-  .req { text-align: center; color: var(--ink-2); font-size: 15px; margin: 18px auto 0; max-width: 680px; }
+/* Hero mit weichem Farbschleier */
+.hero { padding: clamp(64px, 10vw, 120px) 0 clamp(64px, 9vw, 112px); text-align: center; overflow: hidden; }
+.hero .glow { position: absolute; inset: -10% -10% auto; height: 70%; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(42% 38% at 22% 28%, var(--blob-1), transparent 70%),
+    radial-gradient(36% 34% at 78% 22%, var(--blob-2), transparent 70%),
+    radial-gradient(50% 40% at 50% 70%, var(--blob-3), transparent 70%);
+  filter: blur(48px); opacity: .7; }
+.hero .wrap { position: relative; z-index: 1; }
+.hero .appicon { width: 112px; height: 112px; margin: 0 auto 24px; filter: drop-shadow(0 18px 30px var(--blue-glow)); }
+.hero .lead { max-width: 640px; margin-left: auto; margin-right: auto; }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 36px; }
+.meta { margin-top: 22px; font-size: 14px; color: var(--ink-3); display: flex; flex-wrap: wrap; gap: 8px 14px; justify-content: center; align-items: center; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; background: var(--card); box-shadow: var(--shadow); font-weight: 600; color: var(--ink-2); font-size: 13px; }
+.pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); display: inline-block; }
 
-  footer { margin-top: 112px; padding: 20px 0 48px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: 12px; letter-spacing: -.005em;
-    display: flex; flex-wrap: wrap; gap: 6px 20px; }
-  footer a { color: inherit; }
-  footer a:hover { color: var(--ink); }
+/* Bühne: Menü und Update-Fenster nebeneinander */
+.stage { display: flex; justify-content: center; align-items: flex-start; gap: 40px; margin-top: clamp(48px, 7vw, 80px); flex-wrap: wrap; }
+.stage figure { margin: 0; }
+.stage .menu { width: 330px; max-width: 100%; }
+.stage .menu .shot { border-radius: 18px; }
+.stage .side { width: 500px; max-width: 100%; padding-top: 64px; }
+.stage .side .shot { border-radius: 16px; }
+.hero .stage .shot { box-shadow: 0 2px 6px rgba(30,50,90,0.05), 0 60px 120px -50px var(--blue-glow), var(--shadow-lg); }
 
-  /* Theme-matched screenshots */
-  .dark-only { display: none !important; }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .dark-only { display: block !important; }
-    :root:not([data-theme="light"]) .light-only { display: none !important; }
-  }
-  :root[data-theme="dark"] .dark-only { display: block !important; }
-  :root[data-theme="dark"] .light-only { display: none !important; }
+/* Neu dabei: Bento */
+.bento { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+.b { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; position: relative; min-width: 0; }
+.b .txt { padding: 26px 28px 28px; }
+.b .txt .k { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--teal); background: var(--teal-tint); padding: 4px 10px; border-radius: 999px; margin-bottom: 14px; }
+.b h3 { margin-bottom: 8px; }
+.b p { color: var(--ink-2); font-size: 16px; }
+.b .pic { background: var(--card-2); padding: 22px; display: flex; justify-content: center; align-items: center; flex: 1; }
+.b .pic img { border-radius: 14px; box-shadow: 0 10px 30px -12px rgba(0,0,0,.28); }
+.b .big { display: block; font-size: clamp(40px, 5vw, 56px); line-height: 1; font-weight: 800; letter-spacing: -0.045em; color: var(--blue); margin: 10px 0 14px; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, system-ui, sans-serif; }
+.b .list { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 10px; }
+.b .list li { display: flex; gap: 12px; align-items: flex-start; color: var(--ink-2); font-size: 15px; line-height: 1.45; }
+.b .list li::before { content: ""; flex: none; width: 18px; height: 18px; margin-top: 2px; border-radius: 50%; background: var(--blue-tint);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b7ced' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5L20 7'/%3E%3C/svg%3E"); background-size: 11px; background-position: center; background-repeat: no-repeat; }
+.b.s4 { grid-column: span 4; } .b.s6 { grid-column: span 6; } .b.s8 { grid-column: span 8; } .b.s12 { grid-column: span 12; }
 
-  @media (max-width: 900px) {
-    .grid { grid-template-columns: repeat(2, 1fr); }
-    .stage .side { padding-top: 0; }
-  }
-  @media (max-width: 734px) {
-    .hero { padding-top: 72px; }
-    .hero .icon { width: 104px; height: 104px; }
-    h1 { font-size: 48px; }
-    .pitch { font-size: 22px; line-height: 1.24; }
-    .sub { font-size: 17px; }
-    .stage { margin-top: 48px; gap: 32px; }
-    .shot.menu img { width: min(330px, 100%); }
-    .shot.update img { width: 100%; }
-    .stage .side { width: 100%; }
-    section { padding-top: 80px; }
-    h2 { font-size: 34px; }
-    .lead { font-size: 18px; margin-bottom: 32px; }
-    .grid { grid-template-columns: 1fr; gap: 12px; }
-    .card { padding: 22px 22px 24px; border-radius: 18px; }
-    .privacy { padding: 36px 22px; border-radius: 22px; }
-    .plist { grid-template-columns: 1fr; gap: 22px; }
-    .steps li { padding-left: 48px; }
-    footer { margin-top: 80px; }
-  }
-  @media (max-width: 360px) { .wrap { padding-left: 16px; padding-right: 16px; } }
+/* Funktionen: Kacheln mit Symbol */
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.tile { background: var(--card); border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow); }
+.tile h3 { margin-bottom: 8px; font-size: 19px; }
+.tile p { color: var(--ink-2); font-size: 16px; }
+.tile .ico { width: 48px; height: 48px; border-radius: 16px; background: var(--blue-tint); color: var(--blue); display: grid; place-items: center; margin-bottom: 18px; }
+.tile .ico svg { width: 24px; height: 24px; }
+.wide { margin-top: 20px; }
+.wide .shot { max-width: 760px; margin: 0 auto; }
 
-  /* Zweisprachig: Browsersprache entscheidet, Schalter oben rechts merkt sich die Wahl */
-  html[lang="de"] .en, html[lang="en"] .de { display: none !important; }
-  main { position: relative; }
-  .lang { position: absolute; top: 18px; right: max(24px, env(safe-area-inset-right));
-    display: inline-flex; border: 1px solid var(--line); border-radius: 980px; overflow: hidden; }
-  .lang button { font: inherit; font-size: 12px; border: 0; background: none; color: var(--ink-2); padding: 3px 10px; cursor: pointer; letter-spacing: 0; }
-  .lang button.on { background: var(--ink); color: var(--bg); }
-  @media (max-width: 360px) { .lang { right: 16px; } }
+/* Zweispaltig und Zahlen */
+.split { display: grid; grid-template-columns: 1fr 1.25fr; gap: clamp(40px, 6vw, 88px); align-items: center; }
+.split.flip { grid-template-columns: 1.25fr 1fr; }
+.split.flip > :first-child { order: 2; }
+.facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: clamp(48px, 6vw, 80px); }
+.fact { background: var(--card); border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow); }
+.fact b { display: block; font-size: clamp(40px, 5vw, 56px); line-height: 1; font-weight: 800; letter-spacing: -0.045em; color: var(--blue); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, system-ui, sans-serif; }
+.fact span { display: block; margin-top: 12px; color: var(--ink-2); font-size: 16px; line-height: 1.45; }
+.facts.rows { grid-template-columns: 1fr; gap: 12px; margin-top: 0; }
+.facts.rows .fact { display: flex; align-items: center; gap: 22px; padding: 22px 26px; }
+.facts.rows .fact b { font-size: clamp(36px, 4vw, 48px); min-width: 96px; text-align: center; }
+.facts.rows .fact span { margin: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+.chip { padding: 9px 15px; border-radius: 999px; background: var(--card); box-shadow: 0 1px 2px rgba(30,50,90,0.06); font-size: 14px; font-weight: 500; color: var(--ink-2); white-space: nowrap; }
+
+/* Schritte */
+.steps { list-style: none; padding: 0; margin: 28px 0 0; display: grid; gap: 22px; counter-reset: s; }
+.steps li { position: relative; padding-left: 52px; color: var(--ink-2); min-width: 0; }
+.steps li::before { counter-increment: s; content: counter(s); position: absolute; left: 0; top: -3px; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--blue-tint); color: var(--blue); font-weight: 700; font-size: 15px; }
+.steps li b { color: var(--ink); font-weight: 600; }
+.steps pre { margin: 10px 0 0; padding: 12px 16px; border-radius: 12px; background: var(--chip); white-space: pre-wrap; overflow-wrap: anywhere; }
+.steps pre code { background: none; padding: 0; font-size: 13px; }
+
+/* Installation */
+.install { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; }
+.panel { background: var(--card); border-radius: var(--radius); padding: clamp(28px, 4vw, 44px); box-shadow: var(--shadow); min-width: 0; }
+.panel h3 { margin-bottom: 6px; }
+.req { list-style: none; padding: 0; margin: 22px 0 0; }
+.req li { display: flex; gap: 14px; align-items: baseline; padding: 15px 0; border-top: 1px solid var(--line); font-size: 16px; }
+.req li:first-child { border-top: 0; padding-top: 6px; }
+.req .name { color: var(--ink); font-weight: 600; flex: 1; }
+.tag { flex: none; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; background: var(--blue-tint); color: var(--blue); }
+.tag.opt { background: var(--chip); color: var(--ink-3); }
+.note { margin-top: 20px; font-size: 14px; color: var(--ink-3); }
+.manual { grid-column: 1 / -1; }
+.manual pre { margin: 16px 0 0; padding: 14px 18px; border-radius: 14px; background: var(--chip); white-space: pre-wrap; overflow-wrap: anywhere; }
+.manual pre code { background: none; padding: 0; font-size: 13px; line-height: 1.6; }
+
+/* Datenschutz */
+.three { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(28px, 4vw, 56px); }
+.three h3 { margin-bottom: 10px; }
+.three p { color: var(--ink-2); font-size: 16px; }
+.rule { height: 1px; background: var(--line); margin: 0 0 28px; }
+
+/* Abschluss, Fuß */
+.credits { text-align: center; }
+.credits p:not(.eyebrow) { font-size: clamp(19px, 2.1vw, 23px); line-height: 1.5; color: var(--ink-2); max-width: 720px; margin: 0 auto; letter-spacing: -0.01em; }
+footer { border-top: 1px solid var(--line); padding: 44px 0 56px; font-size: 14px; color: var(--ink-3); }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 20px 32px; align-items: center; }
+footer nav { display: flex; flex-wrap: wrap; gap: 8px 26px; }
+footer nav a { color: var(--ink-2); font-weight: 500; }
+footer .fine { flex-basis: 100%; }
+
+/* Zweisprachig: Browsersprache entscheidet, Schalter oben rechts merkt sich die Wahl */
+html[lang="de"] .en, html[lang="en"] .de { display: none !important; }
+.lang { flex: none; display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.lang button { font: inherit; font-size: 12px; font-weight: 600; border: 0; background: none; color: var(--ink-2); padding: 5px 10px; cursor: pointer; }
+.lang button.on { background: var(--ink); color: var(--bg); }
+
+/* Schmal */
+@media (max-width: 960px) {
+  .split, .split.flip, .install { grid-template-columns: 1fr; }
+  .split.flip > :first-child { order: 0; }
+  .tiles, .three { grid-template-columns: 1fr; }
+  .b.s4, .b.s8 { grid-column: span 6; }
+  .nav-links a.opt { display: none; }
+  .stage .side { padding-top: 0; }
+}
+@media (max-width: 640px) {
+  body { font-size: 16px; }
+  :root { --radius: 24px; --radius-lg: 28px; }
+  .navwrap { top: 8px; padding: 0 10px; }
+  .nav { height: 52px; gap: 10px; }
+  .nav-links { display: none; }
+  .nav .btn { margin-left: auto; }
+  .hero .appicon { width: 92px; height: 92px; }
+  .stage { gap: 28px; }
+  .facts { grid-template-columns: 1fr; gap: 12px; }
+  .fact { padding: 22px 24px; display: flex; align-items: center; gap: 18px; }
+  .fact b { font-size: 40px; min-width: 64px; }
+  .fact span { margin: 0; }
+  .b.s4, .b.s6, .b.s8 { grid-column: span 12; }
+  .tile, .b .txt { padding: 24px; }
+  .steps li { padding-left: 48px; }
+  .panel { padding: 26px 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .btn, .reveal { transition: none; }
+  .reveal { opacity: 1; transform: none; }
+}
 </style>
 <script>
   (function () {
-    var saved = null;
-    try { saved = localStorage.getItem("sh1ftw-lang"); } catch (e) {}
+    var saved = null, theme = null;
+    try { saved = localStorage.getItem("sh1ftw-lang"); theme = localStorage.getItem("sh1ftw-theme"); } catch (e) {}
     var pref = saved || ((navigator.languages && navigator.languages[0]) || navigator.language || "en");
     document.documentElement.lang = /^de/i.test(pref) ? "de" : "en";
+    var m = /[?&]theme=(dark|light)\b/.exec(location.search); if (m) theme = m[1];
+    if (theme === "light" || theme === "dark") document.documentElement.setAttribute("data-theme", theme);
   })();
 </script>
 </head>
 <body>
-<main class="wrap">
-  <div class="lang" role="group" aria-label="Language">
-    <button data-l="de">DE</button><button data-l="en">EN</button>
-  </div>
 
-  <header class="hero">
-    <img class="icon" src="icon.png" alt="" width="128" height="128">
-    <h1 class="display">ShareMount</h1>
-    <p class="pitch display"><span class="en">Your network shares, always there.</span><span class="de">Deine Netzwerkfreigaben, immer da.</span></p>
-    <p class="sub"><span class="en">A small menu bar app for the Mac that keeps SMB shares mounted and brings them back after sleep, network changes and NAS restarts.</span><span class="de">Eine kleine App für die Menüleiste des Mac. Sie hält SMB-Freigaben verbunden und holt sie nach dem Ruhezustand, nach Netzwerkwechseln und nach NAS-Neustarts zurück.</span></p>
-    <div class="cta">
-      <a class="btn" href="https://github.com/SH1FT-W/sharemount/releases/latest"><span class="en">Download</span><span class="de">Laden</span></a>
-      <a class="more" href="https://github.com/SH1FT-W/sharemount"><span class="en">View on GitHub</span><span class="de">Auf GitHub ansehen</span><span class="chev" aria-hidden="true">›</span></a>
+<div class="navwrap">
+  <nav class="nav" aria-label="Site">
+    <a class="brand" href="#top"><img src="icon.png" alt="">ShareMount</a>
+    <div class="nav-links">
+      <a href="#new"><span class="en">New</span><span class="de">Neu</span></a>
+      <a href="#features"><span class="en">Features</span><span class="de">Funktionen</span></a>
+      <a href="#how" class="opt"><span class="en">How it works</span><span class="de">So arbeitet es</span></a>
+      <a href="#privacy" class="opt"><span class="en">Privacy</span><span class="de">Datenschutz</span></a>
+      <a href="#install"><span class="en">Install</span><span class="de">Installation</span></a>
+      <a href="https://github.com/SH1FT-W/sharemount">GitHub</a>
     </div>
-    <p class="meta"><span class="en">Free and open source · macOS 14 or later · Apple silicon</span><span class="de">Kostenlos und Open Source · macOS 14 oder neuer · Apple Chip</span></p>
-  </header>
+    <button class="iconbtn" id="theme" type="button" aria-label="Light or dark">
+      <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    </button>
+    <div class="lang" role="group" aria-label="Language"><button type="button" data-l="de">DE</button><button type="button" data-l="en">EN</button></div>
+    <a class="btn small" href="https://github.com/SH1FT-W/sharemount/releases/latest"><span class="en">Download</span><span class="de">Laden</span></a>
+  </nav>
+</div>
 
-  <div class="stage">
-    <figure class="shot menu">
-      <img class="light-only" src="screenshots/menu-light.png" width="330" height="424" alt="ShareMount menu with three connected shares and one unreachable server">
-      <img class="dark-only" src="screenshots/menu-dark.png" width="330" height="424" alt="ShareMount menu in dark mode">
-      <figcaption><span class="en">The menu, styled like Wi-Fi and Bluetooth</span><span class="de">Das Menü, gestaltet wie WLAN und Bluetooth</span></figcaption>
-    </figure>
-    <div class="side">
-      <figure class="shot update">
-        <img class="light-only" src="screenshots/update-light.png" width="500" height="194" alt="Update window offering a new version">
-        <img class="dark-only" src="screenshots/update-dark.png" width="500" height="194" alt="Update window in dark mode">
-        <figcaption><span class="en">Updates from GitHub, checked before they install</span><span class="de">Updates von GitHub, vor der Installation geprüft</span></figcaption>
+<section class="hero" id="top">
+  <div class="glow" aria-hidden="true"></div>
+  <div class="wrap">
+    <img class="appicon reveal" src="icon.png" width="112" height="112" alt="">
+    <p class="eyebrow reveal"><span class="en">For the Mac menu bar</span><span class="de">Für die Menüleiste des Mac</span></p>
+    <h1 class="reveal d1"><span class="en">Your shares.<br>Always <em>there</em>.</span><span class="de">Deine Freigaben.<br>Immer <em>da</em>.</span></h1>
+    <p class="lead reveal d2"><span class="en">A small menu bar app that <strong>keeps SMB shares mounted</strong> and brings them back after sleep, network changes and NAS restarts. With the passwords macOS already keeps for the Finder.</span><span class="de">Eine kleine App für die Menüleiste, die <strong>SMB-Freigaben verbunden hält</strong> und sie nach dem Ruhezustand, nach Netzwerkwechseln und NAS-Neustarts zurückholt. Mit den Passwörtern, die macOS schon für den Finder kennt.</span></p>
+    <div class="cta reveal d3">
+      <a class="btn" href="https://github.com/SH1FT-W/sharemount/releases/latest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg><span class="en">Download for Mac</span><span class="de">Für den Mac laden</span></a>
+      <a class="btn ghost" href="https://github.com/SH1FT-W/sharemount"><span class="en">View on GitHub</span><span class="de">Auf GitHub ansehen</span></a>
+    </div>
+    <p class="meta reveal d3">
+      <span class="pill"><i></i><span id="sharemount-version">Version 26.10.4</span></span>
+      <span class="en">macOS 14 or later &middot; Apple silicon &middot; Free and open source</span><span class="de">macOS 14 oder neuer &middot; Apple Chip &middot; Kostenlos und Open Source</span>
+    </p>
+    <div class="stage reveal d3">
+      <figure class="menu">
+        <div class="shot">
+          <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="screenshots/menu-dark.png">
+            <img src="screenshots/menu-light.png" width="660" height="848" fetchpriority="high" alt="The ShareMount menu: three connected shares with free space and connection time, one server not reachable, and the actions Reconnect All, Disconnect All, Settings and Open at Login.">
+          </picture>
+        </div>
+        <figcaption class="cap"><span class="en">The menu, styled like Wi-Fi and Bluetooth</span><span class="de">Das Menü, gestaltet wie WLAN und Bluetooth</span></figcaption>
+      </figure>
+      <figure class="side">
+        <div class="shot">
+          <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="screenshots/update-dark.png">
+            <img src="screenshots/update-light.png" width="1000" height="388" alt="The update window: a new version of ShareMount is available, with what is new and the buttons Skip This Version, Remind Me Later and Install Now.">
+          </picture>
+        </div>
+        <figcaption class="cap"><span class="en">Updates from GitHub, checked before they install</span><span class="de">Updates von GitHub, vor der Installation geprüft</span></figcaption>
       </figure>
     </div>
   </div>
+</section>
 
-  <section id="features" aria-labelledby="f-h">
-    <h2 id="f-h" class="display"><span class="en">Set it up once. Forget about it.</span><span class="de">Einmal einrichten. Vergessen.</span></h2>
-    <p class="lead"><span class="en">ShareMount watches your shares in the background and quietly fixes what macOS leaves broken.</span><span class="de">ShareMount behält deine Freigaben im Hintergrund im Blick und repariert still, was macOS kaputt zurücklässt.</span></p>
-    <div class="grid">
-      <div class="card">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 20v-4h-4"/></svg>
+<section id="new" class="tint">
+  <div class="wrap">
+    <div class="head center reveal">
+      <p class="eyebrow"><span class="en">Just arrived</span><span class="de">Gerade neu</span></p>
+      <h2><span class="en">One Mac.<br>Several users.</span><span class="de">Ein Mac.<br>Mehrere Benutzer.</span></h2>
+      <p class="lead"><span class="en">The latest releases make ShareMount at home on a shared Mac, give its buttons the Liquid Glass look and switch to calendar versions.</span><span class="de">Die letzten Releases machen ShareMount auf einem gemeinsam genutzten Mac zu Hause, geben seinen Knöpfen den Liquid-Glass-Look und wechseln zu Kalender-Versionen.</span></p>
+    </div>
+    <div class="bento">
+      <div class="b s8 reveal">
+        <div class="txt">
+          <span class="k"><span class="en">Multiple users</span><span class="de">Mehrere Benutzer</span></span>
+          <h3><span class="en">Only your own mounts.</span><span class="de">Nur deine eigenen Freigaben.</span></h3>
+          <p><span class="en">With fast user switching, every signed-in user runs their own ShareMount. It only looks at the shares you mounted yourself and leaves the other users' mounts alone.</span><span class="de">Beim schnellen Benutzerwechsel hat jeder angemeldete Benutzer sein eigenes ShareMount. Es kümmert sich nur um die Freigaben, die du selbst verbunden hast, und lässt die der anderen in Ruhe.</span></p>
+          <ul class="list">
+            <li><span class="en">Another user's mounts are never shown as yours or disconnected by you.</span><span class="de">Freigaben eines anderen Benutzers werden nie als deine angezeigt oder von dir getrennt.</span></li>
+            <li><span class="en">If someone else already uses <code>/Volumes/Name</code>, yours is mounted at <code>Name-1</code> without a warning.</span><span class="de">Belegt jemand anderes schon <code>/Volumes/Name</code>, landet deine ohne Warnung unter <code>Name-1</code>.</span></li>
+            <li><span class="en">While your session is in the background, checking and reconnecting go on. Windows wait until you are back.</span><span class="de">Ist deine Sitzung im Hintergrund, laufen Prüfen und Verbinden weiter. Fenster warten, bis du zurück bist.</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="b s4 reveal d1">
+        <div class="txt">
+          <span class="k"><span class="en">Multiple users</span><span class="de">Mehrere Benutzer</span></span>
+          <h3><span class="en">Updates from any account.</span><span class="de">Updates aus jedem Konto.</span></h3>
+          <p><span class="en">If the app belongs to another user, macOS asks for an administrator password and the app keeps its owner. After one user installs an update, ShareMount restarts by itself for the others. Mounts stay connected.</span><span class="de">Gehört die App einem anderen Benutzer, fragt macOS nach einem Administrator-Passwort, und die App behält ihren Besitzer. Installiert ein Benutzer ein Update, startet ShareMount bei den anderen von selbst neu. Freigaben bleiben verbunden.</span></p>
+        </div>
+      </div>
+      <div class="b s4 reveal">
+        <div class="txt">
+          <span class="k"><span class="en">Versions</span><span class="de">Versionen</span></span>
+          <h3><span class="en">Calendar versions.</span><span class="de">Kalender-Versionen.</span></h3>
+          <b class="big">26.10.4</b>
+          <p><span class="en">Year, month and the release of that month: 26.10.4 is the fourth release of October 2026. A new month starts again at .1. The jump from 2.5 is intended, the update check finds it as usual.</span><span class="de">Jahr, Monat und das Release in diesem Monat: 26.10.4 ist das vierte Release im Oktober 2026. Ein neuer Monat beginnt wieder bei .1. Der Sprung von 2.5 ist gewollt, die Update-Suche findet es wie gewohnt.</span></p>
+        </div>
+      </div>
+      <div class="b s4 reveal d1">
+        <div class="txt">
+          <span class="k">Liquid Glass</span>
+          <h3><span class="en">Glass buttons.</span><span class="de">Knöpfe aus Glas.</span></h3>
+          <p><span class="en">On macOS 26 and 27 the install and notice buttons use the glass style, and the menu rows follow the window corners.</span><span class="de">Auf macOS 26 und 27 nutzen die Installations- und Hinweisknöpfe den Glas-Stil, und die Menüzeilen folgen den Fensterecken.</span></p>
+        </div>
+        <div class="pic">
+          <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="screenshots/update-dark.png">
+            <img src="screenshots/update-light.png" width="1000" height="388" loading="lazy" alt="The update window with its three buttons.">
+          </picture>
+        </div>
+      </div>
+      <div class="b s4 reveal d2">
+        <div class="txt">
+          <span class="k"><span class="en">Earlier</span><span class="de">Davor</span></span>
+          <h3><span class="en">Quiet cleanup.</span><span class="de">Stilles Aufräumen.</span></h3>
+          <p><span class="en">2.4.1 removed the code that once carried settings over from the old app identifier. Nothing changed for you, and the app got a little smaller.</span><span class="de">2.4.1 hat den Code entfernt, der Einstellungen einst von der alten App-Kennung übernahm. Für dich hat sich nichts geändert, die App wurde etwas kleiner.</span></p>
+          <p style="margin-top:14px"><a href="https://github.com/SH1FT-W/sharemount/releases"><span class="en">All releases ›</span><span class="de">Alle Releases ›</span></a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <div class="head center reveal">
+      <p class="eyebrow"><span class="en">Features</span><span class="de">Funktionen</span></p>
+      <h2><span class="en">Set it up once.<br>Forget about it.</span><span class="de">Einmal einrichten.<br>Vergessen.</span></h2>
+      <p class="lead"><span class="en">ShareMount watches your shares in the background and quietly fixes what macOS leaves broken.</span><span class="de">ShareMount behält deine Freigaben im Hintergrund im Blick und repariert still, was macOS kaputt zurücklässt.</span></p>
+    </div>
+    <div class="tiles">
+      <div class="tile reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 20v-4h-4"/></svg></div>
         <h3><span class="en">Reconnects on its own</span><span class="de">Verbindet sich selbst neu</span></h3>
         <p><span class="en">After wake, Wi-Fi changes and NAS reboots. While a server is away it backs off gently, from 30 seconds up to 15 minutes.</span><span class="de">Nach dem Aufwachen, nach WLAN-Wechseln und NAS-Neustarts. Ist ein Server weg, wartet ShareMount immer etwas länger, von 30 Sekunden bis zu 15 Minuten.</span></p>
       </div>
-      <div class="card">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      <div class="tile reveal d1">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
         <h3><span class="en">No more beachballs</span><span class="de">Kein Wasserball mehr</span></h3>
         <p><span class="en">Hung mounts are detected with short timeouts and remounted, but never in the first seconds after wake.</span><span class="de">Hängende Freigaben werden mit kurzen Zeitlimits erkannt und neu verbunden, aber nie in den ersten Sekunden nach dem Aufwachen.</span></p>
       </div>
-      <div class="card">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      <div class="tile reveal d2">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
         <h3><span class="en">Uses the macOS keychain</span><span class="de">Nutzt den macOS-Schlüsselbund</span></h3>
         <p><span class="en">Connects through macOS with the password the Finder already saved. ShareMount never reads or stores a password.</span><span class="de">Verbindet über macOS mit dem Passwort, das der Finder schon gesichert hat. ShareMount liest oder speichert nie ein Passwort.</span></p>
       </div>
-      <div class="card">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h6l2 2h10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 14h6"/></svg>
+      <div class="tile reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h6l2 2h10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 14h6"/></svg></div>
         <h3><span class="en">Clean paths</span><span class="de">Saubere Pfade</span></h3>
-        <p><span class="en">Keeps shares at <code>/Volumes/Media</code> instead of <code>Media-1</code>, so scripts and backups always find them.</span><span class="de">Hält Freigaben unter <code>/Volumes/Media</code> statt <code>Media-1</code>, damit Skripte und Backups sie immer finden.</span></p>
+        <p><span class="en">Keeps shares at <code>/Volumes/Media</code> instead of <code>Media-1</code>, so scripts and backups always find them, and tells you if a leftover folder is in the way.</span><span class="de">Hält Freigaben unter <code>/Volumes/Media</code> statt <code>Media-1</code>, damit Skripte und Backups sie immer finden, und sagt dir, wenn ein übrig gebliebener Ordner im Weg ist.</span></p>
       </div>
-      <div class="card">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4v5c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V7z"/><path d="M12 9v4"/><path d="M12 16.5v.01"/></svg>
+      <div class="tile reveal d1">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V7z"/><path d="M12 9v4"/><path d="M12 16.5v.01"/></svg></div>
         <h3><span class="en">Gentle with your NAS</span><span class="de">Schonend für dein NAS</span></h3>
         <p><span class="en">A rejected password stops all automatic retries until you sign in again, so your account is never locked out.</span><span class="de">Wird ein Passwort abgelehnt, stoppen alle automatischen Versuche, bis du dich neu anmeldest. So wird dein Konto nie gesperrt.</span></p>
       </div>
-      <div class="card">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1-.6-9 6 6 0 0 1 11.4 1.5A4 4 0 0 1 17 18z"/></svg>
+      <div class="tile reveal d2">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4.5 4.5 0 0 1-.6-9 6 6 0 0 1 11.4 1.5A4 4 0 0 1 17 18z"/></svg></div>
         <h3><span class="en">All your Macs</span><span class="de">Alle deine Macs</span></h3>
         <p><span class="en">With iCloud Drive, your list of shares follows you to every Mac. Passwords stay in each Mac's keychain.</span><span class="de">Mit iCloud Drive kommt deine Liste der Freigaben auf jeden Mac mit. Passwörter bleiben im Schlüsselbund des jeweiligen Mac.</span></p>
       </div>
+      <div class="tile reveal">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v10H4z"/><path d="M8 20h8"/><path d="M12 16v4"/></svg></div>
+        <h3><span class="en">Native menu</span><span class="de">Natives Menü</span></h3>
+        <p><span class="en">Designed like the Wi-Fi and Bluetooth menus of macOS 26 and 27, with free space per share, connection time and one click to open, disconnect or reconnect.</span><span class="de">Gestaltet wie die WLAN- und Bluetooth-Menüs von macOS 26 und 27, mit freiem Platz je Freigabe, Verbindungsdauer und einem Klick zum Öffnen, Trennen oder Neuverbinden.</span></p>
+      </div>
+      <div class="tile reveal d1">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></div>
+        <h3><span class="en">Easy setup</span><span class="de">Einfache Einrichtung</span></h3>
+        <p><span class="en">Add shares by hand, pick a server found via Bonjour, paste an <code>smb://</code> address, or adopt the shares already mounted in the Finder.</span><span class="de">Freigaben von Hand anlegen, einen per Bonjour gefundenen Server wählen, eine <code>smb://</code>-Adresse einfügen oder die Freigaben übernehmen, die im Finder schon verbunden sind.</span></p>
+      </div>
+      <div class="tile reveal d2">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21h4"/></svg></div>
+        <h3><span class="en">Notifications</span><span class="de">Mitteilungen</span></h3>
+        <p><span class="en">When a share is lost, a password is rejected or an update is available. At most once every 10 minutes per share.</span><span class="de">Wenn eine Freigabe verloren geht, ein Passwort abgelehnt wird oder ein Update bereitsteht. Höchstens alle 10 Minuten je Freigabe.</span></p>
+      </div>
     </div>
-    <div class="wide">
-      <img class="light-only" src="screenshots/settings-shares-light.png" width="600" height="400" alt="Settings window listing four shares on nas.local">
-      <img class="dark-only" src="screenshots/settings-shares-dark.png" width="600" height="400" alt="Settings window in dark mode">
+    <div class="wide reveal">
+      <div class="shot">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="screenshots/settings-shares-dark.png">
+          <img src="screenshots/settings-shares-light.png" width="1200" height="800" loading="lazy" alt="The settings window with a list of four shares, each with its smb address and an Edit button, plus Add, Import Connected and Show Config in Finder.">
+        </picture>
+      </div>
+      <p class="cap"><span class="en">Settings: your shares, synced between your Macs through iCloud Drive if you like.</span><span class="de">Einstellungen: deine Freigaben, auf Wunsch über iCloud Drive zwischen deinen Macs abgeglichen.</span></p>
     </div>
-  </section>
+  </div>
+</section>
 
-  <section id="privacy" aria-labelledby="p-h">
-    <div class="privacy">
-      <h2 id="p-h" class="display"><span class="en">Private by design.</span><span class="de">Privat von Grund auf.</span></h2>
-      <ul class="plist">
-        <li><h3><span class="en">No tracking</span><span class="de">Kein Tracking</span></h3><p><span class="en">No analytics, no telemetry, no accounts. There is nothing to sign up for.</span><span class="de">Keine Analyse, keine Telemetrie, keine Konten. Es gibt nichts, wofür du dich registrieren musst.</span></p></li>
-        <li><h3><span class="en">Only your servers</span><span class="de">Nur deine Server</span></h3><p><span class="en">ShareMount talks to your own SMB servers and, to look for updates, to GitHub. Nothing else.</span><span class="de">ShareMount spricht mit deinen eigenen SMB-Servern und, um nach Updates zu suchen, mit GitHub. Sonst mit niemandem.</span></p></li>
-        <li><h3><span class="en">No passwords stored</span><span class="de">Keine Passwörter gespeichert</span></h3><p><span class="en">Passwords stay in the macOS keychain and are only ever used by macOS itself.</span><span class="de">Passwörter bleiben im macOS-Schlüsselbund und werden nur von macOS selbst benutzt.</span></p></li>
-        <li><h3><span class="en">Plain files</span><span class="de">Einfache Dateien</span></h3><p><span class="en">Your shares live in a readable <code>shares.json</code>, the log in <code>~/Library/Logs</code>.</span><span class="de">Deine Freigaben stehen in einer lesbaren <code>shares.json</code>, das Protokoll in <code>~/Library/Logs</code>.</span></p></li>
-      </ul>
+<section id="how" class="tint">
+  <div class="wrap">
+    <div class="split">
+      <div class="reveal">
+        <p class="eyebrow"><span class="en">How it works</span><span class="de">So arbeitet es</span></p>
+        <h2><span class="en">Careful, not busy.</span><span class="de">Sorgfältig, nicht hektisch.</span></h2>
+        <p class="lead"><span class="en">ShareMount checks at launch, after wake, on every network change and once a minute. A share counts as dead only when the server stops answering or reading the folder hangs, twice in a row. Only then is it unmounted and mounted again.</span><span class="de">ShareMount prüft beim Start, nach dem Aufwachen, bei jedem Netzwerkwechsel und einmal pro Minute. Eine Freigabe gilt erst als tot, wenn der Server nicht mehr antwortet oder das Lesen des Ordners hängt, zweimal hintereinander. Erst dann wird sie getrennt und neu verbunden.</span></p>
+        <div class="chips">
+          <span class="chip"><span class="en">Launch</span><span class="de">Start</span></span>
+          <span class="chip"><span class="en">After wake</span><span class="de">Nach dem Aufwachen</span></span>
+          <span class="chip"><span class="en">Network change</span><span class="de">Netzwerkwechsel</span></span>
+          <span class="chip"><span class="en">Every minute</span><span class="de">Jede Minute</span></span>
+        </div>
+      </div>
+      <div class="reveal d1">
+        <div class="facts rows">
+          <div class="fact"><b>445</b><span class="en">A quick check on the SMB port tells whether a server is reachable at all.</span><span class="de">Ein kurzer Test am SMB-Port zeigt, ob ein Server überhaupt erreichbar ist.</span></div>
+          <div class="fact"><b>10 s</b><span class="en">If reading a folder takes longer than that, twice in a row, the mount counts as hung.</span><span class="de">Dauert das Lesen eines Ordners länger, zweimal hintereinander, gilt die Freigabe als hängend.</span></div>
+          <div class="fact"><b>0</b><span class="en">passwords in ShareMount. It mounts through macOS, which takes them from the keychain.</span><span class="de">Passwörter in ShareMount. Es verbindet über macOS, das sie aus dem Schlüsselbund nimmt.</span></div>
+        </div>
+      </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <section id="install" aria-labelledby="i-h">
-    <h2 id="i-h" class="display"><span class="en">Install in a minute.</span><span class="de">In einer Minute installiert.</span></h2>
-    <p class="lead"><span class="en">ShareMount is open source and signed locally, not notarized by Apple, so macOS asks once before the first launch.</span><span class="de">ShareMount ist Open Source und lokal signiert, nicht von Apple beglaubigt. Deshalb fragt macOS vor dem ersten Start einmal nach.</span></p>
-    <ol class="steps">
-      <li><h3><span class="en">Download</span><span class="de">Laden</span></h3><p><span class="en">Get <code>ShareMount.zip</code> from the <a href="https://github.com/SH1FT-W/sharemount/releases/latest">latest release</a> and unzip it.</span><span class="de">Lade <code>ShareMount.zip</code> aus dem <a href="https://github.com/SH1FT-W/sharemount/releases/latest">neuesten Release</a> und entpacke es.</span></p></li>
-      <li><h3><span class="en">Move to Applications</span><span class="de">In „Programme“ bewegen</span></h3><p><span class="en">Drag <code>ShareMount.app</code> into your Applications folder. Updates replace it there.</span><span class="de">Zieh <code>ShareMount.app</code> in deinen Ordner „Programme“. Updates ersetzen sie dort.</span></p></li>
-      <li><h3><span class="en">Allow the first launch</span><span class="de">Ersten Start erlauben</span></h3><p><span class="en">Open it, then go to System Settings › Privacy &amp; Security and click Open Anyway. Or in Terminal:</span><span class="de">Öffne sie, geh dann zu Systemeinstellungen › Datenschutz &amp; Sicherheit und klicke auf „Dennoch öffnen“. Oder im Terminal:</span></p>
-        <pre><code>xattr -dr com.apple.quarantine /Applications/ShareMount.app</code></pre></li>
-      <li><h3><span class="en">Add your shares</span><span class="de">Freigaben hinzufügen</span></h3><p><span class="en">Add them in Settings or adopt the ones already mounted in the Finder. Sign in once with “Remember this password in my keychain”.</span><span class="de">Füge sie in den Einstellungen hinzu oder übernimm die, die im Finder schon verbunden sind. Melde dich einmal mit „Dieses Passwort im Schlüsselbund sichern“ an.</span></p></li>
-    </ol>
-    <p class="req"><span class="en">Requires macOS 14 or later on Apple silicon. English and German interface. Prefer to build it yourself? See the <a href="https://github.com/SH1FT-W/sharemount#build-from-source">README</a>.</span><span class="de">Braucht macOS 14 oder neuer auf einem Mac mit Apple Chip. Oberfläche auf Deutsch und Englisch. Lieber selbst bauen? Siehe <a href="https://github.com/SH1FT-W/sharemount#build-from-source">README</a>.</span></p>
-  </section>
+<section id="privacy">
+  <div class="wrap">
+    <div class="head center reveal">
+      <p class="eyebrow"><span class="en">Privacy</span><span class="de">Datenschutz</span></p>
+      <h2><span class="en">Private by design.</span><span class="de">Privat von Grund auf.</span></h2>
+    </div>
+    <div class="three">
+      <div class="reveal"><div class="rule"></div><h3><span class="en">No tracking.</span><span class="de">Kein Tracking.</span></h3><p><span class="en">No analytics, no telemetry, no accounts. There is nothing to sign up for.</span><span class="de">Keine Analyse, keine Telemetrie, keine Konten. Es gibt nichts, wofür du dich registrieren musst.</span></p></div>
+      <div class="reveal d1"><div class="rule"></div><h3><span class="en">Only your servers.</span><span class="de">Nur deine Server.</span></h3><p><span class="en">ShareMount talks to your own SMB servers, browses for them via Bonjour while the share editor is open, and asks GitHub for new releases. Nothing else.</span><span class="de">ShareMount spricht mit deinen eigenen SMB-Servern, sucht sie per Bonjour, solange der Freigaben-Editor offen ist, und fragt GitHub nach neuen Releases. Sonst mit niemandem.</span></p></div>
+      <div class="reveal d2"><div class="rule"></div><h3><span class="en">Plain files.</span><span class="de">Einfache Dateien.</span></h3><p><span class="en">Your shares live in a readable <code>shares.json</code> in iCloud Drive or Application Support, the log in <code>~/Library/Logs</code>. Passwords stay in the macOS keychain.</span><span class="de">Deine Freigaben stehen in einer lesbaren <code>shares.json</code> in iCloud Drive oder Application Support, das Protokoll in <code>~/Library/Logs</code>. Passwörter bleiben im macOS-Schlüsselbund.</span></p></div>
+    </div>
+  </div>
+</section>
 
-  <footer>
-    <span><span class="en">ShareMount by</span><span class="de">ShareMount von</span> <a href="https://sh1ft-w.github.io/">SH1FT-W</a></span>
-    <a href="https://github.com/SH1FT-W/sharemount"><span class="en">Source on GitHub</span><span class="de">Quellcode auf GitHub</span></a>
-    <a href="https://github.com/SH1FT-W/sharemount/blob/main/LICENSE"><span class="en">MIT License</span><span class="de">MIT-Lizenz</span></a>
-    <span><span class="en">No tracking on this site.</span><span class="de">Kein Tracking auf dieser Seite.</span></span>
-  </footer>
-</main>
+<section id="install" class="tint">
+  <div class="wrap">
+    <div class="head center reveal">
+      <p class="eyebrow"><span class="en">Install</span><span class="de">Installation</span></p>
+      <h2><span class="en">Ready in a minute.</span><span class="de">In einer Minute bereit.</span></h2>
+      <p class="lead"><span class="en">ShareMount is open source and signed locally, not notarized by Apple, so macOS asks once before the first launch.</span><span class="de">ShareMount ist Open Source und lokal signiert, nicht von Apple beglaubigt. Deshalb fragt macOS vor dem ersten Start einmal nach.</span></p>
+    </div>
+    <div class="install">
+      <div class="panel reveal">
+        <h3><span class="en">Four steps</span><span class="de">Vier Schritte</span></h3>
+        <p class="muted"><span class="en">From then on ShareMount takes care of itself, updates included.</span><span class="de">Ab dann kümmert sich ShareMount um sich selbst, Updates eingeschlossen.</span></p>
+        <ol class="steps">
+          <li class="en"><b>Download</b> <code>ShareMount.zip</code> from the <a href="https://github.com/SH1FT-W/sharemount/releases/latest">latest release</a> and unzip it.</li>
+          <li class="en"><b>Move</b> <code>ShareMount.app</code> into your Applications folder. Updates replace it there.</li>
+          <li class="en"><b>Allow the first launch.</b> Open it, then go to System Settings, Privacy &amp; Security, and click Open Anyway. Or in Terminal:
+            <pre><code>xattr -dr com.apple.quarantine /Applications/ShareMount.app</code></pre></li>
+          <li class="en"><b>Add your shares</b> in Settings or adopt the ones already mounted in the Finder. Sign in once with "Remember this password in my keychain".</li>
+          <li class="de"><b>Lade</b> <code>ShareMount.zip</code> aus dem <a href="https://github.com/SH1FT-W/sharemount/releases/latest">neuesten Release</a> und entpacke es.</li>
+          <li class="de"><b>Bewege</b> <code>ShareMount.app</code> in deinen Ordner „Programme“. Updates ersetzen sie dort.</li>
+          <li class="de"><b>Erlaube den ersten Start.</b> Öffne sie, geh dann zu Systemeinstellungen, Datenschutz &amp; Sicherheit, und klicke auf „Dennoch öffnen“. Oder im Terminal:
+            <pre><code>xattr -dr com.apple.quarantine /Applications/ShareMount.app</code></pre></li>
+          <li class="de"><b>Füge deine Freigaben hinzu</b> in den Einstellungen oder übernimm die, die im Finder schon verbunden sind. Melde dich einmal mit „Dieses Passwort im Schlüsselbund sichern“ an.</li>
+        </ol>
+        <p class="note"><span class="en">A drive icon appears in the menu bar. There is no Dock icon. Turn on Open at Login in the menu so it is there after every restart.</span><span class="de">In der Menüleiste erscheint ein Laufwerkssymbol. Im Dock gibt es keins. Schalte im Menü „Bei der Anmeldung öffnen“ ein, damit es nach jedem Neustart da ist.</span></p>
+      </div>
+      <div class="panel reveal d1">
+        <h3><span class="en">What you need</span><span class="de">Was du brauchst</span></h3>
+        <p class="muted"><span class="en">Built with Apple frameworks only, no third-party code.</span><span class="de">Nur mit Apple-Frameworks gebaut, ohne Fremdcode.</span></p>
+        <ul class="req">
+          <li><span class="name">macOS 14 Sonoma <span class="muted"><span class="en">or later</span><span class="de">oder neuer</span></span></span><span class="tag"><span class="en">Required</span><span class="de">Nötig</span></span></li>
+          <li><span class="name"><span class="en">A Mac with Apple silicon</span><span class="de">Ein Mac mit Apple Chip</span></span><span class="tag"><span class="en">Required</span><span class="de">Nötig</span></span></li>
+          <li><span class="name"><span class="en">Local network access</span><span class="de">Zugriff aufs lokale Netzwerk</span> <span class="muted"><span class="en">to reach your servers</span><span class="de">für deine Server</span></span></span><span class="tag"><span class="en">Required</span><span class="de">Nötig</span></span></li>
+          <li><span class="name">iCloud Drive <span class="muted"><span class="en">to sync the list between Macs</span><span class="de">für den Abgleich zwischen Macs</span></span></span><span class="tag opt">Optional</span></li>
+          <li><span class="name"><span class="en">Notifications</span><span class="de">Mitteilungen</span></span><span class="tag opt">Optional</span></li>
+        </ul>
+        <p class="note"><span class="en">Intel Macs are not supported. English and German interface, following your Mac's preferred language.</span><span class="de">Intel-Macs werden nicht unterstützt. Oberfläche auf Deutsch und Englisch, je nach bevorzugter Sprache deines Mac.</span></p>
+      </div>
+      <div class="panel manual reveal">
+        <h3><span class="en">Build it yourself</span><span class="de">Selbst bauen</span></h3>
+        <p class="muted"><span class="en">No Xcode needed, the Command Line Tools are enough.</span><span class="de">Kein Xcode nötig, die Command Line Tools reichen.</span></p>
+        <pre><code>git clone https://github.com/SH1FT-W/sharemount.git
+cd sharemount
+./build.sh install</code></pre>
+        <p class="note"><span class="en">Updates arrive through the app itself: it checks GitHub releases after launch and every 6 hours, verifies the checksum, the bundle and the code signature, and swaps the app in place. Versions count year.month.release: 26.10.4 is the fourth release of October 2026.</span><span class="de">Updates kommen über die App selbst: Sie fragt nach dem Start und alle 6 Stunden die GitHub-Releases ab, prüft Prüfsumme, Bundle und Signatur und tauscht die App an Ort und Stelle. Versionen zählen Jahr.Monat.Release: 26.10.4 ist das vierte Release im Oktober 2026.</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="credits">
+  <div class="wrap narrow reveal">
+    <p class="eyebrow"><span class="en">Open source</span><span class="de">Open Source</span></p>
+    <p><span class="en">ShareMount is a small, independent project under the MIT license. Found a bug or missing something? Open an issue on GitHub.</span><span class="de">ShareMount ist ein kleines, unabhängiges Projekt unter MIT-Lizenz. Fehler gefunden oder etwas vermisst? Mach ein Issue auf GitHub auf.</span></p>
+    <div class="cta">
+      <a class="btn" href="https://github.com/SH1FT-W/sharemount/releases/latest"><span class="en">Download for Mac</span><span class="de">Für den Mac laden</span></a>
+      <a class="btn ghost" href="https://github.com/SH1FT-W/sharemount/issues"><span class="en">Report an issue</span><span class="de">Fehler melden</span></a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span class="brand"><img src="icon.png" alt="">ShareMount</span>
+    <nav>
+      <a href="https://github.com/SH1FT-W/sharemount#readme">README</a>
+      <a href="https://github.com/SH1FT-W/sharemount/releases">Releases</a>
+      <a href="https://github.com/SH1FT-W/sharemount/issues"><span class="en">Issues</span><span class="de">Fehler melden</span></a>
+      <a href="https://github.com/SH1FT-W/sharemount">GitHub</a>
+      <a href="https://github.com/SH1FT-W/sharemount/blob/main/LICENSE"><span class="en">MIT License</span><span class="de">MIT-Lizenz</span></a>
+    </nav>
+    <p class="fine"><span class="en">ShareMount by <a href="https://sh1ft-w.github.io/">SH1FT-W</a> is an independent project and not affiliated with Apple. The screenshots use demo data. No tracking on this site.</span><span class="de">ShareMount von <a href="https://sh1ft-w.github.io/">SH1FT-W</a> ist ein unabhängiges Projekt und gehört nicht zu Apple. Die Bildschirmfotos zeigen Beispieldaten. Kein Tracking auf dieser Seite.</span></p>
+  </div>
+</footer>
+
 <script>
+  // Sprache: Schalter oben rechts, Wahl bleibt gespeichert
   (function () {
-    var titles = { en: "ShareMount", de: "ShareMount" };
+    var titles = { en: "ShareMount for the Mac", de: "ShareMount für den Mac" };
     function apply(l) {
       document.documentElement.lang = l;
       document.title = titles[l];
@@ -281,6 +599,60 @@
       });
     });
     apply(document.documentElement.lang);
+  })();
+
+  // Hell/Dunkel: folgt dem System, der Schalter oben rechts überstimmt es und merkt sich die Wahl.
+  // Bilder mit <picture>-Quelle für Dunkel folgen dem Schalter mit.
+  (function () {
+    var mq = window.matchMedia("(prefers-color-scheme: dark)");
+    function effective() {
+      var t = document.documentElement.getAttribute("data-theme");
+      return t === "dark" || t === "light" ? t : (mq.matches ? "dark" : "light");
+    }
+    function pictures() {
+      var forced = document.documentElement.getAttribute("data-theme");
+      document.querySelectorAll("picture > source[srcset]").forEach(function (s) {
+        s.media = forced === "dark" ? "all" : forced === "light" ? "not all" : "(prefers-color-scheme: dark)";
+      });
+    }
+    document.getElementById("theme").addEventListener("click", function () {
+      var next = effective() === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      try { localStorage.setItem("sh1ftw-theme", next); } catch (e) {}
+      pictures();
+    });
+    pictures();
+  })();
+
+  // Einblenden beim Scrollen
+  (function () {
+    var els = document.querySelectorAll(".reveal");
+    if (/[?&]still\b/.test(location.search)) document.documentElement.classList.add("still");
+    if (!("IntersectionObserver" in window) || window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.classList.contains("still")) {
+      els.forEach(function (e) { e.classList.add("in"); }); return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); } });
+    }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
+    els.forEach(function (e) { io.observe(e); });
+  })();
+
+  // Versionszeile: Info.plist aus dem Repo (ohne API-Limit), sonst das letzte GitHub-Release; der Text oben ist der Fallback.
+  (function () {
+    var el = document.getElementById('sharemount-version');
+    function show(v) { if (v && el) el.textContent = 'Version ' + v; }
+    fetch('https://raw.githubusercontent.com/SH1FT-W/sharemount/main/Info.plist', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.text() : null; })
+      .then(function (t) {
+        var m = t && /<key>CFBundleShortVersionString<\/key>\s*<string>([^<]+)<\/string>/.exec(t);
+        if (m) show(m[1].trim()); else throw 0;
+      })
+      .catch(function () {
+        fetch('https://api.github.com/repos/SH1FT-W/sharemount/releases/latest')
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) { show(j && String(j.tag_name || '').replace(/^v/, '')); })
+          .catch(function () {});
+      });
   })();
 </script>
 </body>

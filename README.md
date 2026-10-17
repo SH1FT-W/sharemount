@@ -17,6 +17,13 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/SH1FT-W/sharemount/releases/latest"><img src="https://img.shields.io/github/v/release/SH1FT-W/sharemount?label=release&color=4a86f0" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/macOS-14%20or%20later-4a86f0" alt="macOS 14 or later">
+  <img src="https://img.shields.io/badge/Apple%20silicon-arm64-4a86f0" alt="Apple silicon">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-4a86f0" alt="MIT license"></a>
+</p>
+
+<p align="center">
   <img src="docs/screenshots/menu-light.png" alt="ShareMount menu (light)" width="330">
   &nbsp;
   <img src="docs/screenshots/menu-dark.png" alt="ShareMount menu (dark)" width="330">
@@ -35,9 +42,10 @@ macOS mounts a network share once and then forgets about it. After the Mac wakes
 - **Clean paths.** Keeps shares at `/Volumes/<name>` instead of `/Volumes/<name>-1`, and tells you if a leftover folder is in the way.
 - **No passwords of its own.** ShareMount mounts through macOS (NetFS and NetAuth), which takes the password from the same keychain entry the Finder creates when you tick *Remember this password in my keychain*. The app never reads or stores your passwords.
 - **Safe with wrong passwords.** If a server rejects the login, ShareMount stops retrying until you sign in again, so your NAS account is not locked out.
-- **Native menu.** Designed like the Wi-Fi and Bluetooth menus of macOS 26 and 27, with free space per share, connection time and one-click open, disconnect or reconnect.
+- **Native menu.** Designed like the Wi-Fi and Bluetooth menus of macOS 26 and 27, with free space per share, connection time and one-click open, disconnect or reconnect. On macOS 26 and 27 the buttons use the Liquid Glass style and the menu rows follow the window corners.
 - **Easy setup.** Add shares by hand, pick a server found via Bonjour, paste an `smb://` address, or adopt shares that are already mounted in the Finder.
 - **Syncs between your Macs.** With iCloud Drive, the list of shares (not the passwords) is shared between all your Macs.
+- **Several users on one Mac.** With fast user switching, every signed-in user runs their own ShareMount. It only looks at the shares you mounted yourself, never shows another user's mounts as yours or unmounts them, and mounts at `Name-1` without a warning if another user already holds `/Volumes/Name`. While your session is in the background, checking and reconnecting go on; windows wait until you are back (see [Updates](#updates)).
 - **Notifications** when a share is lost, a password is rejected or an update is available, at most once every 10 minutes per share.
 - **Updates from GitHub Releases**, verified before anything is replaced (see [Updates](#updates)).
 
@@ -83,6 +91,7 @@ cd sharemount
 ./build.sh install    # copies it to /Applications and launches it
 ./build.sh test       # runs the self tests
 ./build.sh snapshot   # renders the screenshots in docs/screenshots with demo data
+./build.sh release next "What's new"   # maintainers: next calendar version, build, tag, GitHub release
 ```
 
 `build.sh` prefers a macOS 26 SDK from the Command Line Tools (the SDK 27 there lacks the SwiftUI macro plugin) and falls back to the default SDK. Override with `SDK=/path/to/sdk ./build.sh`. Only Apple frameworks are used, no third-party code.
@@ -96,6 +105,14 @@ Before the app is replaced, ShareMount checks that the download matches the publ
 Because ShareMount is ad-hoc signed and the checksum is published in the same release, these checks protect against broken or mixed-up downloads. They cannot protect against a compromised GitHub account, so an update is exactly as trustworthy as this repository's releases.
 
 No GitHub account or token is needed. A read-only token can be entered under *Settings › Updates › GitHub Token (optional)*, which is only useful for a private fork.
+
+### Several users on one Mac
+
+Updates work from any account. If the app in Applications belongs to another user, macOS asks for an administrator password; the app keeps its owner. When one user installs an update, ShareMount restarts by itself for the other signed-in users, and their mounts stay connected. The update window never opens while your session is in the background; it waits until you switch back.
+
+### Version numbers
+
+Since v26.10.4, ShareMount uses calendar versions `YY.M.N`: two-digit year, month without a leading zero, and the running number of the release within that month. v26.10.4 is the fourth release of October 2026; the next month starts again at `.1`. The jump from v2.5 to v26.10.4 is intended: the update check compares the numbers part by part, so any calendar version is newer than any `2.x` and the update is found as usual. How a release is made is described in [RELEASING.md](RELEASING.md).
 
 ## Privacy
 
@@ -115,6 +132,9 @@ ShareMount deliberately stops retrying so your NAS does not lock the account. Cl
 **My share is mounted at `/Volumes/Name-1`.**
 That happens when macOS had not finished removing the old mount. ShareMount fixes it right after its own mounts. For an existing mount it shows *Fix Path* in the menu, because a running app might have files open there. If an empty folder blocks the path, the menu shows the `sudo rmdir` command to remove it.
 
+**Another user on this Mac has the same share mounted.**
+Each user runs their own ShareMount and only sees their own mounts. If the other user already holds `/Volumes/Name`, yours is mounted at `Name-1` on purpose, without a warning or a path fix.
+
 **Does it work with Time Machine shares?**
 Yes. ShareMount ignores the hidden mounts Time Machine creates under `/Volumes/.timemachine`.
 
@@ -132,7 +152,8 @@ English and German. The app picks German when your Mac's first preferred languag
 | `Sources/Mounter.swift` | Mount (NetFS, soft mount, no dialogs), probe, unmount, all with timeouts |
 | `Sources/Keychain.swift` | Where a password lives (macOS keychain via NetAuth, metadata only), optional GitHub token file |
 | `Sources/Store.swift` | `shares.json` (iCloud Drive or Application Support), backup copy, log |
-| `Sources/Updater.swift` | GitHub releases, checksum, signature and bundle checks, in-place swap |
+| `Sources/Updater.swift` | GitHub releases, checksum, signature and bundle checks, in-place swap, administrator swap when the app belongs to another user |
+| `Sources/Session.swift` | Fast user switching: keeps checking in the background, holds windows until the session is in front again |
 | `Sources/*View.swift`, `Components.swift` | Menu, settings and update window (SwiftUI) |
 | `Sources/Lang.swift` | Picks English or German; every visible text is written as `L("German", "English")` |
 
