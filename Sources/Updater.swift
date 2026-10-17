@@ -50,6 +50,7 @@ final class Updater: ObservableObject {
         }
         timer = Timer.scheduledTimer(withTimeInterval: 6 * 3600, repeats: true) { [weak self] _ in
             Task { @MainActor in
+                self?.restartIfReplaced()
                 guard Prefs.shared.autoCheckUpdates else { return }
                 await self?.check(silent: true)
             }
@@ -57,12 +58,12 @@ final class Updater: ObservableObject {
         showNotesAfterUpdate()
         // Mehrere Benutzer teilen sich /Applications/ShareMount.app. Hat ein anderer Benutzer aktualisiert,
         // liegt eine neue Version auf der Platte, während hier noch die alte läuft → selbst neu starten.
-        bundleTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.restartIfReplaced() }
-        }
+        // Geprüft wird beim Zurückwechseln in diese Sitzung (dann war der andere Benutzer gerade vorne) und
+        // beim 6-Stunden-Check, nicht mehr alle 30 s per Info.plist und stat.
+        Session.onReturn { [weak self] in self?.restartIfReplaced() }
     }
 
-    private var bundleTimer: Timer?
+    private var replaced = false
     private let runningBuild = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
     private let runningStamp = Updater.executableStamp()
 
@@ -73,6 +74,7 @@ final class Updater: ObservableObject {
     }
 
     private func restartIfReplaced() {
+        if replaced { return }
         if case .installing = state { return }
         let plist = Bundle.main.bundleURL.appendingPathComponent("Contents/Info.plist")
         // Fehlt die Datei kurz (Tausch läuft gerade), beim nächsten Mal.
@@ -82,7 +84,7 @@ final class Updater: ObservableObject {
               let stamp = Self.executableStamp(),
               build != runningBuild || stamp != runningStamp else { return }
         let version = info["CFBundleShortVersionString"] as? String ?? "?"
-        bundleTimer?.invalidate()
+        replaced = true
         Log.write(L("ShareMount v\(version) wurde installiert (z. B. von einem anderen Benutzer), starte neu",
                     "ShareMount \(version) was installed (e.g. by another user), restarting"))
         Prefs.shared.pendingNotes = (version, L("Von einem anderen Benutzer dieses Macs aktualisiert.", "Updated by another user on this Mac."))
@@ -207,9 +209,9 @@ final class Updater: ObservableObject {
         if let problem = Self.targetProblem(Bundle.main.bundleURL) { state = .failed(problem); return }
         state = .installing(L("Lade v\(release.version) …", "Downloading v\(release.version)…"))
         Log.write(L("Update auf v\(release.version) gestartet", "Update to v\(release.version) started"))
+        let work = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ShareMount-Update-\(UUID().uuidString)")
         do {
-            let work = FileManager.default.temporaryDirectory
-                .appendingPathComponent("ShareMount-Update-\(UUID().uuidString)")
             try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
 
             state = .installing(L("Lade v\(release.version) …", "Downloading v\(release.version)…"))
@@ -227,10 +229,11 @@ final class Updater: ObservableObject {
                 throw Fail(L("Entpacken fehlgeschlagen", "Could not unzip the download"))
             }
             let newApp = work.appendingPathComponent("ShareMount.app")
-            _ = await Shell.run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", newApp.path])
             try await Task.detached { try Self.verifySignature(newApp) }.value   // Signaturprüfung dauert – nicht im Menü-Thread
             let newVersion = Bundle(url: newApp)?.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
             guard newVersion == release.version else { throw Fail(L("Versionsnummer passt nicht zum Release", "Version number does not match the release")) }
+            // Erst nach bestandener Prüfung die Quarantäne entfernen (wie in AgentBar)
+            _ = await Shell.run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", newApp.path])
 
             Prefs.shared.pendingNotes = (release.version, release.notes)
             if Self.needsAdmin(Bundle.main.bundleURL) {
@@ -250,8 +253,9 @@ final class Updater: ObservableObject {
             Log.write(L("Update auf v\(release.version) geprüft, App wird ersetzt und neu gestartet", "Update to v\(release.version) verified, replacing and restarting the app"))
             NSApp.terminate(nil)
         } catch {
+            try? FileManager.default.removeItem(at: work)   // Download und entpackte App nicht liegen lassen
             let msg = (error as? Fail)?.text ?? error.localizedDescription
-            Log.write(L("Update fehlgeschlagen", "Update failed") + ": \(msg)")
+            Log.write(L("Update fehlgeschlagen", "Update failed") + ": \(msg)", problem: true)
             state = .failed(L("Update fehlgeschlagen", "Update failed") + ": \(msg)")
         }
     }
@@ -305,7 +309,7 @@ final class Updater: ObservableObject {
             script.path, Bundle.main.bundleURL.path, newApp.path, prompt,
         ], timeout: 300)
         guard ok else {
-            Log.write(L("Update: Administrator-Tausch abgebrochen oder fehlgeschlagen", "Update: administrator swap cancelled or failed"))
+            Log.write(L("Update: Administrator-Tausch abgebrochen oder fehlgeschlagen", "Update: administrator swap cancelled or failed"), problem: true)
             throw Fail(L("Kein Administrator-Passwort eingegeben oder Ersetzen fehlgeschlagen", "No administrator password entered, or replacing failed"))
         }
     }

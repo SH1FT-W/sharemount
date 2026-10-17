@@ -7,7 +7,11 @@ import AppKit
 enum Session {
     private(set) static var isActive = true
     private static var waiting: [() -> Void] = []
+    private static var returnHandlers: [() -> Void] = []
     private static var started = false
+
+    /// Wird bei jedem Zurückwechseln in diese Sitzung aufgerufen (zusätzlich zum onReturn von start).
+    static func onReturn(_ block: @escaping () -> Void) { returnHandlers.append(block) }
 
     static func start(onReturn: @escaping () -> Void) {
         guard !started else { return }
@@ -26,6 +30,7 @@ enum Session {
                 let run = waiting
                 waiting.removeAll()
                 run.forEach { $0() }
+                returnHandlers.forEach { $0() }
                 onReturn()
             }
         }
