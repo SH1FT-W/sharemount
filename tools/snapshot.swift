@@ -52,7 +52,7 @@ struct Snap {
             print("--demo nur mit CFFIXED_USER_HOME=<Test-Home> (sonst würden echte Einstellungen gelesen)")
             exit(1)
         }
-        AppInfo.versionOverride = "2.2"
+        AppInfo.versionOverride = "26.10.3"
         if let icon = NSImage(contentsOfFile: "Resources/AppIcon.icns") { NSApp.applicationIconImage = icon }
         let engine = Engine()
         let updater = Updater()
@@ -79,8 +79,8 @@ struct Snap {
         for (name, dark) in [("light", false), ("dark", true)] {
             shot(env(SharesTab().frame(width: 600, height: 400)), "\(out)/settings-shares-\(name).png", dark)
         }
-        updater.preview("2.3", notes: Updater.cleanNotes(L("## Neu in 2.3\n- Schnelleres Wiederverbinden nach dem Aufwachen\n- Kleinere Verbesserungen",
-                                                         "## New in 2.3\n- Faster reconnect after wake\n- Minor improvements")))
+        updater.preview("26.10.4", notes: Updater.cleanNotes(L("## Neu in 26.10.4\n- Schnelleres Wiederverbinden nach dem Aufwachen\n- Kleinere Verbesserungen",
+                                                         "## New in 26.10.4\n- Faster reconnect after wake\n- Minor improvements")))
         for (name, dark) in [("light", false), ("dark", true)] {
             shot(env(UpdatePromptView(close: {})), "\(out)/update-\(name).png", dark)
         }
@@ -92,7 +92,7 @@ struct Snap {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd HH:mm:ss"
         let lines: [(TimeInterval, String)] = [
-            (-3 * 3600 - 30, L("Start v2.2: 4 Freigabe(n)", "Launch v2.2: 4 share(s)")),
+            (-3 * 3600 - 30, L("Start v26.10.3: 4 Freigabe(n)", "Launch v26.10.3: 4 share(s)")),
             (-3 * 3600 - 28, L("Netzwerk bereit (en0)", "Network ready (en0)")),
             (-3 * 3600 - 25, L("Media: verbunden → /Volumes/Media", "Media: connected → /Volumes/Media")),
             (-3 * 3600 - 24, L("Backups: verbunden → /Volumes/Backups", "Backups: connected → /Volumes/Backups")),

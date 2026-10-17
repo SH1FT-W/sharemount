@@ -68,7 +68,12 @@ extension View {
     }
     /// Hervorgehobener Glas-Button (Akzentfarbe) für die eine empfohlene Aktion.
     @ViewBuilder func glassProminentButton() -> some View {
+        #if SNAPSHOT
+        // Offscreen (tools/snapshot.swift) zeichnet .glassProminent das ganze Fenster leer; fürs Bild der normale Prominent-Knopf.
+        self.buttonStyle(.borderedProminent)
+        #else
         if #available(macOS 26.0, *) { self.buttonStyle(.glassProminent) } else { self.buttonStyle(.borderedProminent) }
+        #endif
     }
     /// macOS 26/27: runder Liquid-Glass-Button, auf älteren Systemen randlos.
     @ViewBuilder func glassCircleButton() -> some View {
