@@ -16,8 +16,8 @@ enum Store {
     static var oldDir: URL { iCloudRoot.appendingPathComponent("ShareMount") }
 
     /// Bestehende Konfiguration an den aktuellen Ort holen: lokal → iCloud Drive (einmalig) und
-    /// iCloud Drive › ShareMount → iCloud Drive › Software › ShareMount. Läuft auch beim 10-s-Poll,
-    /// damit ein Mac mit alter Version, der noch an den alten Ort schreibt, nicht abgehängt wird.
+    /// iCloud Drive › ShareMount → iCloud Drive › Software › ShareMount. Läuft beim Start und danach stündlich
+    /// (Engine), damit ein Mac mit alter Version, der noch an den alten Ort schreibt, nicht abgehängt wird.
     static func migrateIfNeeded() {
         let fm = FileManager.default
         guard isSynced else { return }
@@ -58,7 +58,9 @@ enum Store {
     static func load() -> [Share] { loadIfValid() ?? [] }
 
     /// Vor dem Überschreiben eine Kopie (shares.backup.json) – falls eine Bearbeitung danebengeht.
-    static func save(_ shares: [Share]) {
+    /// false = nicht geschrieben (z. B. iCloud Drive nicht beschreibbar, Platte voll); steht dann im Protokoll.
+    @discardableResult
+    static func save(_ shares: [Share]) -> Bool {
         let fm = FileManager.default
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
         let backup = dir.appendingPathComponent("shares.backup.json")
@@ -66,7 +68,14 @@ enum Store {
             try? fm.removeItem(at: backup)
             try? fm.copyItem(at: file, to: backup)
         }
-        try? encode(shares).write(to: file, options: .atomic)
+        do {
+            try encode(shares).write(to: file, options: .atomic)
+            return true
+        } catch {
+            Log.write(L("Einstellungen konnten nicht gespeichert werden (\(file.path)): \(error.localizedDescription)",
+                        "Could not save settings (\(file.path)): \(error.localizedDescription)"), problem: true)
+            return false
+        }
     }
 
     static func encode(_ shares: [Share]) throws -> Data {
@@ -97,8 +106,12 @@ enum Log {
         try? FileManager.default.moveItem(at: url, to: oldURL)
     }
 
-    static func write(_ msg: String) {
-        let line = "\(fmt.string(from: Date()))  \(msg)\n"
+    /// Kennzeichen für Problemzeilen, direkt hinter der Uhrzeit. Die Protokoll-Ansicht filtert und färbt danach;
+    /// ältere Zeilen ohne Kennzeichen erkennt sie weiter über eine Wortliste.
+    static let problemMarker = "[!]"
+
+    static func write(_ msg: String, problem: Bool = false) {
+        let line = "\(fmt.string(from: Date()))  \(problem ? problemMarker + " " : "")\(msg)\n"
         queue.async {
             if let h = try? FileHandle(forWritingTo: url) {
                 let end = h.seekToEndOfFile()

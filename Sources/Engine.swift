@@ -40,6 +40,7 @@ final class Engine: ObservableObject {
     private var timer: Timer?
     private var configTimer: Timer?
     private var configStamp: Date?
+    private var lastMigration = Date()
     private let pathMonitor = NWPathMonitor()
     private var lastPath: String?
     private var subs: Set<AnyCancellable> = []
@@ -113,9 +114,7 @@ final class Engine: ObservableObject {
                 }
                 if !ready {
                     if wasReady || first { Log.write(L("Warte auf WLAN/LAN …", "Waiting for Wi-Fi or Ethernet…")) }
-                    for s in self.shares where !(self.status[s.id]?.isMounted ?? false) {
-                        self.status[s.id] = .waitingForNetwork
-                    }
+                    self.markWaitingForNetwork()
                     return
                 }
                 if first { return }
@@ -130,7 +129,7 @@ final class Engine: ObservableObject {
         Prefs.shared.$interval.removeDuplicates().sink { [weak self] secs in
             Task { @MainActor in self?.startTimer(secs) }
         }.store(in: &subs)
-        // Änderungen vom anderen Mac (über iCloud Drive) alle 10 s aufgreifen.
+        // Änderungen vom anderen Mac (über iCloud Drive) alle 10 s aufgreifen (nur Änderungsdatum, billig).
         configTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.reloadConfigIfChanged() }
         }
@@ -162,7 +161,11 @@ final class Engine: ObservableObject {
 
     private func reloadConfigIfChanged() {
         if frozen { return }
-        Store.migrateIfNeeded()
+        // Alte Speicherorte höchstens stündlich prüfen (Dateisystem-Zugriffe auf iCloud Drive), beim Start sofort (init)
+        if Date().timeIntervalSince(lastMigration) > 3600 {
+            Store.migrateIfNeeded()
+            lastMigration = Date()
+        }
         let stamp = Store.modificationDate()
         guard stamp != configStamp else { return }
         guard let new = Store.loadIfValid() else { return }   // halb geschrieben → beim nächsten Mal
@@ -177,8 +180,22 @@ final class Engine: ObservableObject {
     }
 
     private func persist() {
-        Store.save(shares)
+        if !Store.save(shares) {
+            Notifier.send("store.failed", title: L("ShareMount: Einstellungen nicht gespeichert", "ShareMount: settings not saved"),
+                          body: L("Die Datei shares.json konnte nicht geschrieben werden. Details im Protokoll.",
+                                  "Could not write shares.json. See the log for details."), force: true)
+        }
         configStamp = Store.modificationDate()
+    }
+
+    /// Ohne Netz warten alle nicht verbundenen Freigaben, außer manuell getrennte und ausgeschaltete:
+    /// die sollen nach dem Netz-Comeback nicht plötzlich wieder verbinden oder „Warte auf WLAN“ anzeigen.
+    private func markWaitingForNetwork() {
+        for s in shares {
+            let st = status[s.id]
+            guard !(st?.isMounted ?? false), st != .disconnected, st != .disabled else { continue }
+            status[s.id] = .waitingForNetwork
+        }
     }
 
     private func forget(_ id: UUID) {
@@ -210,7 +227,7 @@ final class Engine: ObservableObject {
     // MARK: Verlauf
 
     private func record(_ s: Share, _ text: String, problem: Bool = false) {
-        Log.write("\(s.displayName): \(text)")
+        Log.write("\(s.displayName): \(text)", problem: problem)
         var list = events[s.id] ?? []
         list.insert(ShareEvent(date: Date(), text: text, problem: problem), at: 0)
         events[s.id] = Array(list.prefix(15))
@@ -274,7 +291,7 @@ final class Engine: ObservableObject {
     func checkAll(force: Bool = false) async {
         if frozen { return }
         guard networkReady else {
-            for s in shares where !(status[s.id]?.isMounted ?? false) { status[s.id] = .waitingForNetwork }
+            markWaitingForNetwork()
             return
         }
         isChecking = true
@@ -320,15 +337,14 @@ final class Engine: ObservableObject {
             let st = strikes[s.id].map { ($0.count + 1, $0.since) } ?? (1, now)
             strikes[s.id] = st
             let cacheOnly = probe.usage != nil                // Server stumm, Mount liest (evtl. nur Cache)
-            let (need, span): (Int, TimeInterval) = cacheOnly ? (3, 90) : (2, 20)
-            if st.0 < need || now.timeIntervalSince(st.1) < span {
+            if !Self.shouldUnmount(strikes: st.0, since: st.1, now: now, cacheOnly: cacheOnly) {
                 if let u = probe.usage { usage[s.id] = u; setMounted(s, m.path) } else { status[s.id] = .stale }
                 recheck(s, after: cacheOnly ? 35 : 12)        // zeitnah nachprüfen statt erst beim nächsten Durchlauf
                 return
             }
             record(s, reachable ? L("Mount reagiert nicht, wird gelöst", "Mount not responding, unmounting")
                                  : L("Server weg, Mount wird gelöst", "Server gone, unmounting"), problem: true)
-            if !(await Mounter.unmount(m.path, force: true)) { Log.write("\(s.displayName): " + L("Lösen fehlgeschlagen", "unmount failed")) }
+            if !(await Mounter.unmount(m.path, force: true)) { Log.write("\(s.displayName): " + L("Lösen fehlgeschlagen", "unmount failed"), problem: true) }
             await Mounter.waitUntilFree(m.path)
             strikes[s.id] = nil
             setNotMounted(s, .checking)
@@ -391,8 +407,7 @@ final class Engine: ObservableObject {
                                 : L("Kein Passwort im Schlüsselbund. Im Menü „Anmelden …“ wählen.",
                                     "No password in the keychain. Choose “Sign In…” in the menu."))
         case .failure(let err):
-            // Wartezeit verdoppelt sich: 30 s, 1 min, 2 min … max. 15 min
-            let delay = min((retryAt[s.id]?.delay ?? 15) * 2, 900)
+            let delay = Self.nextRetryDelay(after: retryAt[s.id]?.delay)
             retryAt[s.id] = (Date().addingTimeInterval(delay), delay)
             let n = (failCount[s.id] ?? 0) + 1
             failCount[s.id] = n
@@ -471,18 +486,40 @@ final class Engine: ObservableObject {
 
     private func noteBlockedPath(_ s: Share, _ path: String) {
         let clean = s.cleanMountPath
-        // Liegt unter dem sauberen Pfad der Mount eines anderen Benutzers, ist „Name-1“ richtig – kein Hinweis.
-        misplaced[s.id] = path != clean && !FileManager.default.fileExists(atPath: clean)
-            && !Mounter.isForeignMountPoint(clean) ? path : nil
-        if path != clean, FileManager.default.fileExists(atPath: clean), !Mounter.isMountPoint(clean) {
-            if blockedPaths[s.id] != clean {
-                Log.write("\(s.displayName): " + L("\(clean) ist ein verwaister Ordner (nur mit sudo rmdir zu entfernen)",
-                                                          "\(clean) is an orphaned folder (can only be removed with sudo rmdir)"))
-            }
-            blockedPaths[s.id] = clean
-        } else {
-            blockedPaths[s.id] = nil
+        let v = Self.pathVerdict(path: path, clean: clean, cleanExists: FileManager.default.fileExists(atPath: clean),
+                                 cleanIsMountPoint: Mounter.isMountPoint(clean), cleanIsForeign: Mounter.isForeignMountPoint(clean))
+        misplaced[s.id] = v.misplaced
+        if v.blocked, blockedPaths[s.id] != clean {
+            Log.write("\(s.displayName): " + L("\(clean) ist ein verwaister Ordner (nur mit sudo rmdir zu entfernen)",
+                                                      "\(clean) is an orphaned folder (can only be removed with sudo rmdir)"))
         }
+        blockedPaths[s.id] = v.blocked ? clean : nil
+    }
+
+    // MARK: Reine Entscheidungen (Selbsttests)
+
+    /// Hängender Mount: Server UND Mount tot → nach 2 Fehlschlägen über mindestens 20 s lösen. Antwortet nur der
+    /// Server nicht, der Mount liest aber (evtl. nur Cache), kann das an der Prüfung selbst liegen (Lokales-Netzwerk-
+    /// Recht, VPN) → erst nach 3 Fehlschlägen über mindestens 90 s.
+    static func shouldUnmount(strikes: Int, since: Date, now: Date, cacheOnly: Bool) -> Bool {
+        let (need, span): (Int, TimeInterval) = cacheOnly ? (3, 90) : (2, 20)
+        return strikes >= need && now.timeIntervalSince(since) >= span
+    }
+
+    /// Wartezeit nach einem fehlgeschlagenen Verbinden verdoppelt sich: 30 s, 1 min, 2 min … höchstens 15 min.
+    static func nextRetryDelay(after previous: TimeInterval?) -> TimeInterval {
+        min((previous ?? 15) * 2, 900)
+    }
+
+    /// Mount liegt nicht auf dem sauberen Pfad: `misplaced` = „Name“ wäre frei, Hinweis „Pfad korrigieren“ (Pfad des
+    /// Mounts); `blocked` = unter „Name“ liegt ein verwaister Ordner, der den sauberen Pfad blockiert.
+    /// Gehört „Name“ dem Mount eines anderen Benutzers dieses Macs, ist „Name-1“ richtig: weder noch.
+    static func pathVerdict(path: String, clean: String, cleanExists: Bool, cleanIsMountPoint: Bool, cleanIsForeign: Bool)
+        -> (misplaced: String?, blocked: Bool) {
+        guard path != clean else { return (nil, false) }
+        let misplaced = !cleanExists && !cleanIsForeign ? path : nil
+        let blocked = cleanExists && !cleanIsMountPoint
+        return (misplaced, blocked)
     }
 
     /// Ohne Passwort: macOS (NetAuth) nimmt das im Schlüsselbund gesicherte Finder-Passwort.
