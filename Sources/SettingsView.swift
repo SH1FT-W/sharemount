@@ -274,7 +274,10 @@ struct GeneralTab: View {
                        "ShareMount never reads passwords itself. It connects through the macOS login service, which uses the password saved in the keychain, just like the Finder. That is why there are no keychain prompts after updates."))
                     .font(.caption).foregroundStyle(.secondary)
                 Button(L("Schlüsselbundverwaltung öffnen", "Open Keychain Access")) {
-                    NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Library/CoreServices/Applications/Keychain Access.app"))
+                    // Per Bundle-ID statt festem Pfad (der Ort hat sich zwischen macOS-Versionen schon geändert)
+                    if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.keychainaccess") {
+                        NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+                    }
                 }
             }
         }
@@ -364,14 +367,20 @@ struct LogTab: View {
     @State private var filter = ""
     @State private var problemsOnly = false
 
-    /// Deutsche und englische Protokollzeilen (je nach Sprache, mit der die Zeile geschrieben wurde).
+    /// Rückfall für Zeilen aus älteren Versionen ohne Log.problemMarker: deutsche und englische Reizwörter
+    /// (je nach Sprache, mit der die Zeile geschrieben wurde).
     private static let problemWords = ["nicht", "fehl", "Fehler", "abgelehnt", "hängt", "reagiert", "weg", "Zeitüber",
                                        " not ", "failed", "Error", "rejected", "hung", "responding", "gone", "Timed out", "in use"]
+
+    /// Problemzeile: seit 26.10 steht das Kennzeichen beim Schreiben in der Zeile, alte Zeilen über die Wortliste.
+    static func isProblem(_ line: String) -> Bool {
+        line.contains("  \(Log.problemMarker) ") || Self.problemWords.contains { line.contains($0) }
+    }
 
     var shown: [String] {
         lines.reversed().filter { l in
             (filter.isEmpty || l.localizedCaseInsensitiveContains(filter)) &&
-            (!problemsOnly || Self.problemWords.contains { l.contains($0) })
+            (!problemsOnly || Self.isProblem(l))
         }
     }
 
@@ -390,7 +399,7 @@ struct LogTab: View {
                 LazyVStack(alignment: .leading, spacing: 1) {
                     ForEach(Array(shown.enumerated()), id: \.offset) { _, l in
                         Text(l).font(.system(size: 11, design: .monospaced))
-                            .foregroundStyle(Self.problemWords.contains { l.contains($0) } ? Color.orange : Color.primary)
+                            .foregroundStyle(Self.isProblem(l) ? Color.orange : Color.primary)
                             .textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }

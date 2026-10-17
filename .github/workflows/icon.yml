@@ -23,7 +23,7 @@ jobs:
             --output-format human-readable-text --notices --warnings --errors \
             --output-partial-info-plist out/partial.plist \
             --app-icon AppIcon --include-all-app-icons \
-            --enable-on-demand-resources NO --development-region de \
+            --enable-on-demand-resources NO --development-region en \
             --target-device mac --minimum-deployment-target 14.0 --platform macosx
           ls -la out
           test -f out/Assets.car

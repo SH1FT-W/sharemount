@@ -212,9 +212,9 @@ struct ShareRow: View {
             if let p = engine.path(of: share) {
                 Button(L("Im Finder öffnen", "Open in Finder")) { engine.open(share) }
                 Button(L("Im Terminal öffnen", "Open in Terminal")) {
-                    NSWorkspace.shared.open([URL(fileURLWithPath: p)],
-                                            withApplicationAt: URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"),
-                                            configuration: NSWorkspace.OpenConfiguration())
+                    // Terminal per Bundle-ID statt festem Pfad (wie in AgentBar)
+                    guard let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Terminal") else { return }
+                    NSWorkspace.shared.open([URL(fileURLWithPath: p)], withApplicationAt: app, configuration: NSWorkspace.OpenConfiguration())
                 }
                 Button(L("Pfad kopieren", "Copy Path") + " (\(p))") { copy(p) }
                 Divider()
