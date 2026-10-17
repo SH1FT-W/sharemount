@@ -28,7 +28,7 @@ struct Snap {
         for (name, dark) in [("light", false), ("dark", true)] {
             shot(env(MenuView()), "build/snap-menu-\(name).png", dark)
         }
-        updater.preview("2.2", notes: Updater.cleanNotes("## Neu in 2.2\n- Update-Fenster nach dem Start\n- Diese Version überspringen\n- Kleinere Verbesserungen"))
+        updater.preview("2.2", notes: ReleaseNotes.cleanNotes("## Neu in 2.2\n- Update-Fenster nach dem Start\n- Diese Version überspringen\n- Kleinere Verbesserungen"))
         for (name, dark) in [("light", false), ("dark", true)] {
             shot(env(UpdatePromptView(close: {})), "build/snap-update-\(name).png", dark)
         }
@@ -79,7 +79,7 @@ struct Snap {
         for (name, dark) in [("light", false), ("dark", true)] {
             shot(env(SharesTab().frame(width: 600, height: 400)), "\(out)/settings-shares-\(name).png", dark)
         }
-        updater.preview("26.10.4", notes: Updater.cleanNotes(L("## Neu in 26.10.4\n- Schnelleres Wiederverbinden nach dem Aufwachen\n- Kleinere Verbesserungen",
+        updater.preview("26.10.4", notes: ReleaseNotes.cleanNotes(L("## Neu in 26.10.4\n- Schnelleres Wiederverbinden nach dem Aufwachen\n- Kleinere Verbesserungen",
                                                          "## New in 26.10.4\n- Faster reconnect after wake\n- Minor improvements")))
         for (name, dark) in [("light", false), ("dark", true)] {
             shot(env(UpdatePromptView(close: {})), "\(out)/update-\(name).png", dark)

@@ -66,6 +66,10 @@ struct MenuView: View {
                 .padding(.horizontal, 5).padding(.bottom, 5)
         }
         .frame(width: 330)
+        // Aussehen der gemeinsamen Menü-Bausteine (Shared/Sources/MenuComponents.swift) wie bisher in ShareMount:
+        // Divider als Trenner, Überschriften 2/3 pt, Detail und Kürzel 55 %, auch hervorgehoben.
+        .menuLook(MenuLook(separator: .divider, headerTopPadding: 2, headerBottomPadding: 3, headerMonospacedDigits: false,
+                           detailOpacity: 0.55, shortcutOpacity: 0.55, highlightedOpacity: 0.55))
         .onAppear { loginItem = SMAppService.mainApp.status == .enabled }
     }
 

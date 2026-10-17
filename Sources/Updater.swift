@@ -1,11 +1,11 @@
 import AppKit
-import CryptoKit
-import Security
 
 /// Updates aus den GitHub-Releases von SH1FT-W/sharemount.
 /// Öffentliche Releases brauchen keinen Token. Ein Token (nur Lesen, siehe TokenStore) ist optional:
 /// nur für ein privates Repo/einen privaten Fork oder wenn das GitHub-Limit ohne Anmeldung (60/Std.) erreicht ist.
 /// Installiert wird nur, wenn Prüfsumme, Bundle-ID und Version stimmen und die Signatur gültig ist (ad-hoc, kein Zertifikat).
+/// Die Schritte selbst (Laden, Prüfen, Tauschen) liegen in Shared/Sources/UpdateCore.swift; hier bleibt, was
+/// ShareMount eigen ist: Token, Benutzerwechsel, Tausch mit Administrator-Rechten, Protokoll.
 @MainActor
 final class Updater: ObservableObject {
     enum State: Equatable {
@@ -28,6 +28,7 @@ final class Updater: ObservableObject {
     @Published private(set) var offeredVersion: String?
 
     static let repo = "SH1FT-W/sharemount"
+    static let appName = "ShareMount"
     private var release: Release?
     private var timer: Timer?
 
@@ -39,6 +40,8 @@ final class Updater: ObservableObject {
         /// Token, mit dem das Release gefunden wurde (nil = öffentlich, ohne Anmeldung).
         let token: String?
     }
+
+    private var userAgent: String { "ShareMount/\(AppInfo.version)" }
 
     init() {
         hasToken = TokenStore.exists
@@ -133,10 +136,10 @@ final class Updater: ObservableObject {
         defer { lastCheck = Date() }
         do {
             var used = token
-            var (data, http) = try await latestRelease(token: used)
+            var (data, http) = try await UpdateCore.fetchLatestRelease(repo: Self.repo, userAgent: userAgent, token: used)
             // Abgelaufener/ungültiger Token: ein öffentliches Repo geht auch ohne – dann ohne weiter.
             if http?.statusCode == 401, used != nil {
-                let retry = try await latestRelease(token: nil)
+                let retry = try await UpdateCore.fetchLatestRelease(repo: Self.repo, userAgent: userAgent, token: nil)
                 if retry.1?.statusCode == 200 {
                     (data, http, used) = (retry.0, retry.1, nil)
                     Log.write(L("Update-Prüfung: GitHub-Token ungültig, ohne Token geprüft", "Update check: GitHub token invalid, checked without token"))
@@ -145,26 +148,23 @@ final class Updater: ObservableObject {
             noteTokenExpiry(http)
             switch http?.statusCode ?? 0 {
             case 200: break
-            case 401: throw Fail(L("Token ungültig oder abgelaufen", "Token invalid or expired"))
+            case 401: throw UpdateError(L("Token ungültig oder abgelaufen", "Token invalid or expired"))
             case 403, 429:
-                throw Fail(used == nil ? L("GitHub-Limit erreicht, später erneut versuchen", "GitHub rate limit reached, try again later")
-                                       : L("Kein Zugriff auf \(Self.repo), Token prüfen", "No access to \(Self.repo), check the token"))
-            case 404: throw Fail(used == nil ? L("Kein Release gefunden", "No release found")
-                                            : L("Kein Release gefunden (oder Token ohne Zugriff)", "No release found (or the token has no access)"))
-            case let c: throw Fail(L("GitHub antwortet mit \(c)", "GitHub responded with \(c)"))
+                throw UpdateError(used == nil ? L("GitHub-Limit erreicht, später erneut versuchen", "GitHub rate limit reached, try again later")
+                                              : L("Kein Zugriff auf \(Self.repo), Token prüfen", "No access to \(Self.repo), check the token"))
+            case 404: throw UpdateError(used == nil ? L("Kein Release gefunden", "No release found")
+                                                   : L("Kein Release gefunden (oder Token ohne Zugriff)", "No release found (or the token has no access)"))
+            case let c: throw UpdateError(L("GitHub antwortet mit \(c)", "GitHub responded with \(c)"))
             }
             let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
-            let tag = (json["tag_name"] as? String ?? "").trimmingCharacters(in: CharacterSet(charactersIn: "vV"))
-            let assets = json["assets"] as? [[String: Any]] ?? []
-            func asset(_ name: String) -> URL? {
-                assets.first { $0["name"] as? String == name }
-                    .flatMap { $0["url"] as? String }.flatMap(URL.init(string:))
+            let found = try GitHubRelease(json: json)
+            // API-Links der Assets (nicht browser_download_url): nur so geht ein Download mit Token
+            guard let zip = found.apiURL("ShareMount.zip"), let sum = found.apiURL("ShareMount.zip.sha256") else {
+                throw UpdateError(L("Release ohne ShareMount.zip/.sha256", "Release has no ShareMount.zip/.sha256"))
             }
-            guard !tag.isEmpty, let zip = asset("ShareMount.zip"), let sum = asset("ShareMount.zip.sha256") else {
-                throw Fail(L("Release ohne ShareMount.zip/.sha256", "Release has no ShareMount.zip/.sha256"))
-            }
-            let body = Self.cleanNotes(json["body"] as? String ?? "")
-            if Self.isNewer(tag, than: AppInfo.version) {
+            let tag = found.version
+            let body = ReleaseNotes.cleanNotes(found.notes)
+            if UpdateCore.isNewer(tag, than: AppInfo.version) {
                 release = Release(version: tag, notes: body, zip: zip, checksum: sum, token: used)
                 notes = body
                 offeredVersion = tag
@@ -188,7 +188,7 @@ final class Updater: ObservableObject {
                 state = .upToDate
             }
         } catch {
-            let msg = (error as? Fail)?.text ?? L("GitHub nicht erreichbar", "GitHub not reachable")
+            let msg = (error as? UpdateError)?.text ?? L("GitHub nicht erreichbar", "GitHub not reachable")
             // Stilles Prüfen im Hintergrund: Fehler nur ins Protokoll, Menü bleibt ruhig.
             if silent {
                 Log.write(L("Update-Prüfung", "Update check") + ": \(msg)")
@@ -215,25 +215,14 @@ final class Updater: ObservableObject {
             try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
 
             state = .installing(L("Lade v\(release.version) …", "Downloading v\(release.version)…"))
-            let zipData = try await download(release.zip, token: release.token)
-            let sumText = String(decoding: try await download(release.checksum, token: release.token), as: UTF8.self)
+            let zipData = try await UpdateCore.download(release.zip, userAgent: userAgent, token: release.token)
+            let sumText = String(decoding: try await UpdateCore.download(release.checksum, userAgent: userAgent, token: release.token), as: UTF8.self)
 
             state = .installing(L("Prüfe …", "Verifying…"))
-            let expected = sumText.split(whereSeparator: \.isWhitespace).first.map(String.init)?.lowercased() ?? ""
-            let actual = SHA256.hash(data: zipData).map { String(format: "%02x", $0) }.joined()
-            guard expected.count == 64, expected == actual else { throw Fail(L("Prüfsumme stimmt nicht", "Checksum does not match")) }
-
-            let zipURL = work.appendingPathComponent("ShareMount.zip")
-            try zipData.write(to: zipURL)
-            guard await Shell.run("/usr/bin/ditto", ["-x", "-k", zipURL.path, work.path]) else {
-                throw Fail(L("Entpacken fehlgeschlagen", "Could not unzip the download"))
-            }
-            let newApp = work.appendingPathComponent("ShareMount.app")
-            try await Task.detached { try Self.verifySignature(newApp) }.value   // Signaturprüfung dauert – nicht im Menü-Thread
-            let newVersion = Bundle(url: newApp)?.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-            guard newVersion == release.version else { throw Fail(L("Versionsnummer passt nicht zum Release", "Version number does not match the release")) }
-            // Erst nach bestandener Prüfung die Quarantäne entfernen (wie in AgentBar)
-            _ = await Shell.run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", newApp.path])
+            try UpdateCore.verifyChecksum(zipData, sha256Text: sumText)
+            // Entpacken, Bundle-ID, Version, Code-Signatur (nicht im Menü-Thread); Quarantäne erst nach bestandener Prüfung weg
+            let newApp = try await UpdateCore.unpackAndVerify(zip: zipData, in: work, appName: Self.appName,
+                                                              bundleID: Bundle.main.bundleIdentifier ?? AppInfo.bundleID, version: release.version)
 
             Prefs.shared.pendingNotes = (release.version, release.notes)
             if Self.needsAdmin(Bundle.main.bundleURL) {
@@ -249,33 +238,23 @@ final class Updater: ObservableObject {
                 return
             }
             state = .installing(L("Starte neu …", "Restarting…"))
-            try launchSwapScript(newApp: newApp, work: work)
+            try UpdateCore.launchSwapScript(target: Bundle.main.bundleURL, newApp: newApp, work: work, logFile: Log.url,
+                                            failureMessage: L("Update: Ersetzen fehlgeschlagen, alte Version bleibt", "Update: replacing failed, keeping the old version"))
             Log.write(L("Update auf v\(release.version) geprüft, App wird ersetzt und neu gestartet", "Update to v\(release.version) verified, replacing and restarting the app"))
             NSApp.terminate(nil)
         } catch {
             try? FileManager.default.removeItem(at: work)   // Download und entpackte App nicht liegen lassen
-            let msg = (error as? Fail)?.text ?? error.localizedDescription
+            let msg = (error as? UpdateError)?.text ?? error.localizedDescription
             Log.write(L("Update fehlgeschlagen", "Update failed") + ": \(msg)", problem: true)
             state = .failed(L("Update fehlgeschlagen", "Update failed") + ": \(msg)")
         }
     }
 
     /// Ziel muss ersetzbar sein – sonst endet jeder Versuch in derselben Schleife (z. B. Start aus „Downloads“
-    /// mit App-Translocation oder von einem schreibgeschützten Volume).
+    /// mit App-Translocation oder von einem schreibgeschützten Volume). Nicht beschreibbar (App gehört einem
+    /// anderen Benutzer) geht mit Administrator-Passwort, deshalb ohne requireWritable.
     private static func targetProblem(_ app: URL) -> String? {
-        let move = L("Bitte ShareMount in den Ordner „Programme“ ziehen, von dort öffnen und das Update erneut starten.",
-                     "Please move ShareMount to the Applications folder, open it from there and start the update again.")
-        if app.path.contains("/AppTranslocation/") {
-            return L("ShareMount läuft aus einem vorübergehenden Ort (macOS-Schutz für geladene Apps). ",
-                     "ShareMount is running from a temporary location (macOS protection for downloaded apps). ") + move
-        }
-        // Nicht beschreibbar (App gehört einem anderen Benutzer) geht mit Administrator-Passwort – nur ein
-        // schreibgeschütztes Volume (z. B. Start direkt aus einem Disk-Image) nicht.
-        var fs = statfs()
-        if statfs(app.path, &fs) == 0, fs.f_flags & UInt32(MNT_RDONLY) != 0 {
-            return L("ShareMount liegt auf einem schreibgeschützten Volume. ", "ShareMount is on a read-only volume. ") + move
-        }
-        return nil
+        UpdateCore.targetProblem(app, appName: appName, requireWritable: false)
     }
 
     /// Darf dieser Benutzer die App selbst ersetzen? Sonst (anderer Besitzer) per Administrator-Passwort.
@@ -310,85 +289,11 @@ final class Updater: ObservableObject {
         ], timeout: 300)
         guard ok else {
             Log.write(L("Update: Administrator-Tausch abgebrochen oder fehlgeschlagen", "Update: administrator swap cancelled or failed"), problem: true)
-            throw Fail(L("Kein Administrator-Passwort eingegeben oder Ersetzen fehlgeschlagen", "No administrator password entered, or replacing failed"))
+            throw UpdateError(L("Kein Administrator-Passwort eingegeben oder Ersetzen fehlgeschlagen", "No administrator password entered, or replacing failed"))
         }
-    }
-
-    /// Gleiche Bundle-ID und gültige (ad-hoc-)Signatur. Ein festes Zertifikat gibt es bewusst nicht mehr –
-    /// nach einem Update fragt der Schlüsselbund einmal nach („Immer erlauben“).
-    nonisolated private static func verifySignature(_ app: URL) throws {
-        guard let id = Bundle(url: app)?.bundleIdentifier, id == (Bundle.main.bundleIdentifier ?? AppInfo.bundleID) else {
-            throw Fail(L("Falsche App im Release", "Wrong app in the release"))
-        }
-        var other: SecStaticCode?
-        guard SecStaticCodeCreateWithPath(app as CFURL, [], &other) == errSecSuccess, let other else {
-            throw Fail(L("Signatur nicht lesbar", "Signature not readable"))
-        }
-        let flags = SecCSFlags(rawValue: kSecCSCheckAllArchitectures | kSecCSStrictValidate | kSecCSCheckNestedCode)
-        guard SecStaticCodeCheckValidity(other, flags, nil) == errSecSuccess else {
-            throw Fail(L("Signatur ungültig, Update verworfen", "Invalid signature, update discarded"))
-        }
-    }
-
-    /// Kleines Skript ersetzt die App, sobald sie beendet ist, und startet die neue.
-    /// Schlägt das Verschieben fehl, kommt die alte App zurück.
-    private func launchSwapScript(newApp: URL, work: URL) throws {
-        let target = Bundle.main.bundleURL.path
-        let script = work.appendingPathComponent("swap.sh")
-        // Pfade als Argumente statt in den Skripttext eingesetzt – kein Zitat-/Sonderzeichen-Problem.
-        let body = """
-        #!/bin/zsh -f
-        PID="$1"; TARGET="$2"; NEW="$3"; WORK="$4"; LOG="$5"
-        while kill -0 "$PID" 2>/dev/null; do sleep 0.2; done
-        OLD="$TARGET.alt"
-        rm -rf "$OLD"
-        if mv "$TARGET" "$OLD" && mv "$NEW" "$TARGET"; then
-            rm -rf "$OLD"
-        else
-            [[ -d "$OLD" && ! -d "$TARGET" ]] && mv "$OLD" "$TARGET"
-            echo "$(date '+%Y-%m-%d %H:%M:%S')  \(L("Update: Ersetzen fehlgeschlagen, alte Version bleibt", "Update: replacing failed, keeping the old version"))" >> "$LOG"
-        fi
-        open "$TARGET"
-        rm -rf "$WORK"
-        """
-        try body.write(to: script, atomically: true, encoding: .utf8)
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        // -f: keine Startdateien des Benutzers (~/.zshenv) – das Skript läuft genau so, wie es hier steht.
-        p.arguments = ["-f", script.path, "\(ProcessInfo.processInfo.processIdentifier)", target, newApp.path, work.path, Log.url.path]
-        p.standardOutput = FileHandle.nullDevice
-        p.standardError = FileHandle.nullDevice
-        try p.run()
     }
 
     // MARK: Hilfen
-
-    private func apiRequest(_ url: String, token: String?) -> URLRequest {
-        var r = URLRequest(url: URL(string: url)!, timeoutInterval: 20)
-        if let token { r.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
-        r.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
-        r.setValue("ShareMount/\(AppInfo.version)", forHTTPHeaderField: "User-Agent")
-        return r
-    }
-
-    /// Asset-Download: GitHub leitet auf einen signierten Speicher-Link um –
-    /// dorthin darf der Token nicht mit (sonst 400 und unnötig preisgegeben).
-    private func latestRelease(token: String?) async throws -> (Data, HTTPURLResponse?) {
-        var req = apiRequest("https://api.github.com/repos/\(Self.repo)/releases/latest", token: token)
-        req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        req.cachePolicy = .reloadIgnoringLocalCacheData      // nie eine zwischengespeicherte „neueste“ Version
-        let (data, resp) = try await URLSession.shared.data(for: req)
-        return (data, resp as? HTTPURLResponse)
-    }
-
-    private func download(_ url: URL, token: String?) async throws -> Data {
-        var req = apiRequest(url.absoluteString, token: token)
-        req.setValue("application/octet-stream", forHTTPHeaderField: "Accept")
-        req.timeoutInterval = 120
-        let (data, resp) = try await URLSession.shared.data(for: req, delegate: StripAuthOnRedirect())
-        guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw Fail(L("Download fehlgeschlagen", "Download failed")) }
-        return data
-    }
 
     private func noteTokenExpiry(_ http: HTTPURLResponse?) {
         // Header z. B. "2027-09-26 21:40:00 +0200"
@@ -400,45 +305,5 @@ final class Updater: ObservableObject {
         f.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
         guard let d = f.date(from: raw.replacingOccurrences(of: " UTC", with: " +0000")) else { return }
         tokenExpiresSoon = d.timeIntervalSinceNow < 30 * 86400 ? d : nil
-    }
-
-    /// GitHub-Markdown grob zu Klartext (Mitteilungen/Einstellungen zeigen kein Markdown).
-    static func cleanNotes(_ md: String) -> String {
-        md.split(separator: "\n", omittingEmptySubsequences: false)
-            .map { line -> String in
-                var l = line.trimmingCharacters(in: .whitespaces)
-                while l.hasPrefix("#") { l.removeFirst() }
-                if l.hasPrefix("- ") || l.hasPrefix("* ") { l = "• " + l.dropFirst(2) }
-                return l.replacingOccurrences(of: "**", with: "").replacingOccurrences(of: "`", with: "")
-                    .trimmingCharacters(in: .whitespaces)
-            }
-            .joined(separator: "\n")
-            .replacingOccurrences(of: "\n{3,}", with: "\n\n", options: .regularExpression)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    static func isNewer(_ a: String, than b: String) -> Bool {
-        let x = a.split(separator: ".").map { Int($0) ?? 0 }
-        let y = b.split(separator: ".").map { Int($0) ?? 0 }
-        for i in 0..<max(x.count, y.count) {
-            let l = i < x.count ? x[i] : 0, r = i < y.count ? y[i] : 0
-            if l != r { return l > r }
-        }
-        return false
-    }
-
-    private struct Fail: Error {
-        let text: String
-        init(_ text: String) { self.text = text }
-    }
-}
-
-private final class StripAuthOnRedirect: NSObject, URLSessionTaskDelegate {
-    func urlSession(_ session: URLSession, task: URLSessionTask,
-                    willPerformHTTPRedirection response: HTTPURLResponse,
-                    newRequest request: URLRequest) async -> URLRequest? {
-        var r = request
-        if r.url?.host != "api.github.com" { r.setValue(nil, forHTTPHeaderField: "Authorization") }
-        return r
     }
 }

@@ -2,23 +2,6 @@ import SwiftUI
 
 // MARK: - Bausteine
 
-struct SectionHeader: View {
-    let title: String
-    var detail: String? = nil
-    var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(title).font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
-            Spacer()
-            if let detail { Text(detail).font(.system(size: 11)).foregroundStyle(.tertiary) }
-        }
-        .padding(.horizontal, 14).padding(.top, 2).padding(.bottom, 3)
-    }
-}
-
-struct MenuSeparator: View {
-    var body: some View { Divider().padding(.horizontal, 14).padding(.vertical, 5) }
-}
-
 /// Belegung: Akzentfarbe, ab 75 % orange, ab 90 % rot.
 struct UsageBar: View {
     let fraction: Double
@@ -50,72 +33,6 @@ struct ToggleRow: View {
         }
         .padding(.horizontal, 9).frame(height: 26)
     }
-}
-
-/// Karten- und Zeilenform im Menü: ab macOS 26 konzentrisch zu den Fensterecken (folgt dem System,
-/// auch den in macOS 27 vereinheitlichten Ecken), `minimum` hält den bisherigen Radius als Untergrenze.
-func cardShape(_ minimum: CGFloat) -> AnyShape {
-    if #available(macOS 26.0, *) {
-        return AnyShape(ConcentricRectangle(corners: .concentric(minimum: .fixed(minimum)), isUniform: true))
-    }
-    return AnyShape(RoundedRectangle(cornerRadius: minimum, style: .continuous))
-}
-
-extension View {
-    /// macOS 26/27: Liquid-Glass-Button, auf älteren Systemen normal umrandet.
-    @ViewBuilder func glassButton() -> some View {
-        if #available(macOS 26.0, *) { self.buttonStyle(.glass) } else { self.buttonStyle(.bordered) }
-    }
-    /// Hervorgehobener Glas-Button (Akzentfarbe) für die eine empfohlene Aktion.
-    @ViewBuilder func glassProminentButton() -> some View {
-        #if SNAPSHOT
-        // Offscreen (tools/snapshot.swift) zeichnet .glassProminent das ganze Fenster leer; fürs Bild der normale Prominent-Knopf.
-        self.buttonStyle(.borderedProminent)
-        #else
-        if #available(macOS 26.0, *) { self.buttonStyle(.glassProminent) } else { self.buttonStyle(.borderedProminent) }
-        #endif
-    }
-    /// macOS 26/27: runder Liquid-Glass-Button, auf älteren Systemen randlos.
-    @ViewBuilder func glassCircleButton() -> some View {
-        if #available(macOS 26.0, *) {
-            self.buttonStyle(.glass).buttonBorderShape(.circle).controlSize(.small)
-        } else {
-            self.buttonStyle(.borderless)
-        }
-    }
-}
-
-/// Befehlszeile wie ein nativer Menüeintrag (macOS 26: Symbol links, Akzent-Hervorhebung, Häkchen, Kürzel).
-struct MenuItem: View {
-    let title: String
-    let icon: String
-    var checked: Bool? = nil
-    var detail: String? = nil
-    var shortcut: String? = nil
-    let action: () -> Void
-    @State private var hover = false
-    @Environment(\.isEnabled) private var enabled
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 7) {
-                Image(systemName: icon).font(.system(size: 12)).frame(width: 17)
-                Text(title).font(.system(size: 13))
-                Spacer(minLength: 6)
-                if let detail { Text(detail).font(.system(size: 12)).opacity(0.55) }
-                if let shortcut { Text(shortcut).font(.system(size: 12)).opacity(0.55) }
-                if checked == true { Image(systemName: "checkmark").font(.system(size: 11, weight: .semibold)) }
-            }
-            .foregroundStyle(hl ? Color.white : enabled ? Color.primary : Color.secondary)
-            .padding(.horizontal, 9).frame(height: 24)
-            .background(cardShape(7).fill(hl ? Color.accentColor : .clear))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .onHover { hover = $0 }
-    }
-
-    private var hl: Bool { hover && enabled }
 }
 
 /// Hinweis-Kasten im Menü (Problem/Tipp) mit optionaler Aktion.
