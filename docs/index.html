@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ShareMount for the Mac</title>
+<title data-de="ShareMount für den Mac">ShareMount for the Mac</title>
 <script src="https://sh1ft-w.github.io/bar.js" data-project="sharemount" defer></script>
 <meta name="description" content="ShareMount is a small macOS menu bar app that keeps your SMB shares mounted. It reconnects them after sleep, network changes and NAS restarts, using the passwords macOS already keeps for the Finder.">
 <meta name="color-scheme" content="light dark">
@@ -13,9 +13,13 @@
 <meta property="og:description" content="Keeps your SMB shares mounted. Reconnects after sleep, network changes and NAS restarts, right from the menu bar.">
 <meta property="og:image" content="https://sh1ft-w.github.io/sharemount/icon.png">
 <link rel="icon" type="image/png" href="icon.png">
+<!-- Shared SH1FT-W design (tokens, glass navigation, light/dark, DE/EN, reveal) -->
+<link rel="stylesheet" href="https://sh1ft-w.github.io/theme/v1/theme.css">
+<script src="https://sh1ft-w.github.io/theme/v1/theme.js"></script>
 <style>
 /* ShareMount-Palette: das Blau des App-Icons; Dunkel folgt dem System oder dem Schalter oben rechts */
 :root {
+  --accent: var(--blue);
   --bg: #f3f6fc; --bg-2: #e9eef8; --card: #ffffff; --card-2: #eef2fa;
   --ink: #141a26; --ink-2: #5b6474; --ink-3: rgba(20,26,38,0.5);
   --blue: #3b7ced; --blue-fill: #4a86f0; --blue-tint: rgba(74,134,240,0.12); --blue-glow: rgba(74,134,240,0.32); --on-blue: #ffffff;
@@ -48,17 +52,9 @@
   --blob-1: rgba(74,134,240,0.22); --blob-2: rgba(94,205,189,0.12); --blob-3: rgba(40,70,140,0.3);
 }
 
-* { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 96px; }
-body {
-  margin: 0; background: var(--bg); color: var(--ink);
-  font: 400 17px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", Roboto, system-ui, sans-serif;
-  letter-spacing: -0.012em; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; overflow-x: hidden;
-}
-img { display: block; max-width: 100%; height: auto; }
+body { letter-spacing: -0.012em; }
 a { color: var(--blue); text-decoration: none; }
 a:hover { text-decoration: underline; text-underline-offset: 3px; }
-:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 8px; }
 .wrap { max-width: var(--max); margin: 0 auto; padding: 0 var(--gutter); }
 .narrow { max-width: 760px; }
 p { margin: 0; }
@@ -67,27 +63,7 @@ p { margin: 0; }
 .center .lead { margin-left: auto; margin-right: auto; max-width: 680px; }
 code { font: 500 0.88em/1.4 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0; background: var(--chip); padding: 2px 6px; border-radius: 6px; overflow-wrap: anywhere; }
 
-/* Schwebende Glas-Navigation */
-.navwrap { position: sticky; top: 12px; z-index: 10; padding: 0 var(--gutter); pointer-events: none; }
-.nav {
-  pointer-events: auto; max-width: var(--max); margin: 0 auto; height: 56px; padding: 0 10px 0 16px;
-  display: flex; align-items: center; gap: 20px; border-radius: 999px;
-  background: var(--glass); backdrop-filter: blur(22px) saturate(1.4); -webkit-backdrop-filter: blur(22px) saturate(1.4);
-  box-shadow: inset 0 0 0 1px var(--glass-line), var(--shadow);
-}
-.brand { display: flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 700; font-size: 17px; letter-spacing: -0.02em; }
-.brand:hover { text-decoration: none; }
-.brand img { width: 28px; height: 28px; }
-.nav-links { display: flex; gap: 4px; margin-left: auto; font-size: 14px; font-weight: 500; }
-.nav-links a { color: var(--ink-2); padding: 8px 12px; border-radius: 999px; transition: background .2s, color .2s; }
-.nav-links a:hover { color: var(--ink); background: var(--chip); text-decoration: none; }
-.iconbtn { flex: none; width: 36px; height: 36px; border-radius: 50%; border: 0; background: none; color: var(--ink-2); cursor: pointer; display: grid; place-items: center; transition: background .2s, color .2s; }
-.iconbtn:hover { background: var(--chip); color: var(--ink); }
-.iconbtn svg { width: 18px; height: 18px; }
-.iconbtn .sun, :root[data-theme="dark"] .iconbtn .moon { display: none; }
-:root[data-theme="dark"] .iconbtn .sun { display: block; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .iconbtn .moon { display: none; } :root:not([data-theme="light"]) .iconbtn .sun { display: block; } }
-:root[data-theme="light"] .iconbtn .moon { display: block; } :root[data-theme="light"] .iconbtn .sun { display: none; }
+/* Glas-Navigation, Hell/Dunkel-Knopf und Sprachschalter kommen aus theme.css */
 
 /* Knöpfe */
 .btn {
@@ -117,12 +93,6 @@ section { padding: clamp(72px, 9vw, 128px) 0; position: relative; }
 section.tint { background: var(--bg-2); }
 .head { margin-bottom: clamp(40px, 5.5vw, 64px); }
 .split h2 { font-size: clamp(34px, 4.4vw, 56px); }
-
-/* Einblenden beim Scrollen (?still in der Adresse schaltet es ab, z. B. für Bildschirmfotos) */
-html.still .reveal { opacity: 1; transform: none; transition: none; }
-.reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1); }
-.reveal.in { opacity: 1; transform: none; }
-.reveal.d1 { transition-delay: .08s; } .reveal.d2 { transition-delay: .16s; } .reveal.d3 { transition-delay: .24s; }
 
 /* Bildrahmen */
 .shot { border-radius: 22px; overflow: hidden; background: var(--card); box-shadow: var(--shadow-lg); position: relative; }
@@ -235,10 +205,6 @@ footer nav a { color: var(--ink-2); font-weight: 500; }
 footer .fine { flex-basis: 100%; }
 
 /* Zweisprachig: Browsersprache entscheidet, Schalter oben rechts merkt sich die Wahl */
-html[lang="de"] .en, html[lang="en"] .de { display: none !important; }
-.lang { flex: none; display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
-.lang button { font: inherit; font-size: 12px; font-weight: 600; border: 0; background: none; color: var(--ink-2); padding: 5px 10px; cursor: pointer; }
-.lang button.on { background: var(--ink); color: var(--bg); }
 
 /* Schmal */
 @media (max-width: 960px) {
@@ -246,15 +212,12 @@ html[lang="de"] .en, html[lang="en"] .de { display: none !important; }
   .split.flip > :first-child { order: 0; }
   .tiles, .three { grid-template-columns: 1fr; }
   .b.s4, .b.s8 { grid-column: span 6; }
-  .nav-links a.opt { display: none; }
   .stage .side { padding-top: 0; }
 }
 @media (max-width: 640px) {
   body { font-size: 16px; }
   :root { --radius: 24px; --radius-lg: 28px; }
-  .navwrap { top: 8px; padding: 0 10px; }
-  .nav { height: 52px; gap: 10px; }
-  .nav-links { display: none; }
+  .nav { gap: 10px; }
   .nav .btn { margin-left: auto; }
   .hero .appicon { width: 92px; height: 92px; }
   .stage { gap: 28px; }
@@ -267,22 +230,7 @@ html[lang="de"] .en, html[lang="en"] .de { display: none !important; }
   .steps li { padding-left: 48px; }
   .panel { padding: 26px 22px; }
 }
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  .btn, .reveal { transition: none; }
-  .reveal { opacity: 1; transform: none; }
-}
 </style>
-<script>
-  (function () {
-    var saved = null, theme = null;
-    try { saved = localStorage.getItem("sh1ftw-lang"); theme = localStorage.getItem("sh1ftw-theme"); } catch (e) {}
-    var pref = saved || ((navigator.languages && navigator.languages[0]) || navigator.language || "en");
-    document.documentElement.lang = /^de/i.test(pref) ? "de" : "en";
-    var m = /[?&]theme=(dark|light)\b/.exec(location.search); if (m) theme = m[1];
-    if (theme === "light" || theme === "dark") document.documentElement.setAttribute("data-theme", theme);
-  })();
-</script>
 </head>
 <body>
 
@@ -584,59 +532,6 @@ cd sharemount
 </footer>
 
 <script>
-  // Sprache: Schalter oben rechts, Wahl bleibt gespeichert
-  (function () {
-    var titles = { en: "ShareMount for the Mac", de: "ShareMount für den Mac" };
-    function apply(l) {
-      document.documentElement.lang = l;
-      document.title = titles[l];
-      document.querySelectorAll(".lang button").forEach(function (b) { b.classList.toggle("on", b.dataset.l === l); });
-    }
-    document.querySelectorAll(".lang button").forEach(function (b) {
-      b.addEventListener("click", function () {
-        try { localStorage.setItem("sh1ftw-lang", b.dataset.l); } catch (e) {}
-        apply(b.dataset.l);
-      });
-    });
-    apply(document.documentElement.lang);
-  })();
-
-  // Hell/Dunkel: folgt dem System, der Schalter oben rechts überstimmt es und merkt sich die Wahl.
-  // Bilder mit <picture>-Quelle für Dunkel folgen dem Schalter mit.
-  (function () {
-    var mq = window.matchMedia("(prefers-color-scheme: dark)");
-    function effective() {
-      var t = document.documentElement.getAttribute("data-theme");
-      return t === "dark" || t === "light" ? t : (mq.matches ? "dark" : "light");
-    }
-    function pictures() {
-      var forced = document.documentElement.getAttribute("data-theme");
-      document.querySelectorAll("picture > source[srcset]").forEach(function (s) {
-        s.media = forced === "dark" ? "all" : forced === "light" ? "not all" : "(prefers-color-scheme: dark)";
-      });
-    }
-    document.getElementById("theme").addEventListener("click", function () {
-      var next = effective() === "dark" ? "light" : "dark";
-      document.documentElement.setAttribute("data-theme", next);
-      try { localStorage.setItem("sh1ftw-theme", next); } catch (e) {}
-      pictures();
-    });
-    pictures();
-  })();
-
-  // Einblenden beim Scrollen
-  (function () {
-    var els = document.querySelectorAll(".reveal");
-    if (/[?&]still\b/.test(location.search)) document.documentElement.classList.add("still");
-    if (!("IntersectionObserver" in window) || window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.classList.contains("still")) {
-      els.forEach(function (e) { e.classList.add("in"); }); return;
-    }
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); } });
-    }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
-    els.forEach(function (e) { io.observe(e); });
-  })();
-
   // Versionszeile: Info.plist aus dem Repo (ohne API-Limit), sonst das letzte GitHub-Release; der Text oben ist der Fallback.
   (function () {
     var el = document.getElementById('sharemount-version');
