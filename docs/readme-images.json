@@ -1,0 +1,42 @@
+{
+  "$comment": "Content of the README pictures. Render with sh1ft-w.github.io/theme/v1/readme-images (node render.mjs <this repo>).",
+  "title": {
+    "name": "ShareMount",
+    "eyebrow": "For the Mac menu bar",
+    "lead": "Your shares. <em>Always there.</em>",
+    "sub": "Keeps SMB shares mounted and brings them back after sleep, network changes and NAS restarts. With the passwords macOS already keeps for the Finder.",
+    "pills": [["macOS 14+"], ["Keychain", "v"], ["Apple silicon"]],
+    "logo": "docs/icon.png",
+    "shot": { "light": "docs/screenshots/menu-light.png", "dark": "docs/screenshots/menu-dark.png", "srcW": 660, "winW": 660, "s": 0.62,
+      "strips": [[0, 848]], "bar": null, "left": 760, "top": 62, "flat": true }
+  },
+  "colors": {
+    "light": { "bg": "#f3f6fc", "bg2": "#ffffff", "ink": "#141a26", "ink2": "#5b6474", "ink3": "#8a93a3", "accentText": "#3b7ced", "accent": "#4a86f0", "accent2": "#f0a04a",
+      "glow1": "rgba(74,134,240,0.20)", "glow2": "rgba(240,160,74,0.14)", "frame": "rgba(20,26,38,0.10)", "pillBg": "#ffffff", "pillLine": "rgba(20,26,38,0.08)", "win": "#f6f6f6", "bar": "" },
+    "dark": { "bg": "#0b0f17", "bg2": "#151b27", "ink": "#eef2f8", "ink2": "rgba(200,210,228,0.86)", "ink3": "rgba(200,210,228,0.5)", "accentText": "#7aa8ff", "accent": "#7aa8ff", "accent2": "#f0a04a",
+      "glow1": "rgba(74,134,240,0.22)", "glow2": "rgba(240,160,74,0.12)", "frame": "rgba(255,255,255,0.10)", "pillBg": "rgba(255,255,255,0.06)", "pillLine": "rgba(255,255,255,0.10)", "win": "#1e1e1e", "bar": "" }
+  },
+  "cards": {
+    "new": [
+      { "icon": "account-multiple-outline", "title": "Only your own mounts", "ver": "2.5", "text": "With fast user switching, every signed-in user runs their own ShareMount and only sees the shares they mounted themselves. Other users' mounts are never shown as yours or disconnected." },
+      { "icon": "update", "title": "Updates from any account", "ver": "2.5", "text": "If the app belongs to another user, macOS asks for an administrator password and the app keeps its owner. After an update ShareMount restarts by itself for the others, mounts stay connected." },
+      { "icon": "calendar-outline", "title": "Calendar versions", "ver": "26.10.4", "text": "Year, month and the release of that month: 26.10.4 is the fourth release of October 2026. The jump from 2.5 is intended, the update check finds it as usual." },
+      { "icon": "blur", "title": "Glass buttons", "ver": "2.4.2", "text": "On macOS 26 and 27 the install and notice buttons use the Liquid Glass style, and the menu rows follow the window corners." }
+    ],
+    "features": [
+      { "icon": "autorenew", "title": "Reconnects on its own", "text": "Checks at launch, after wake, on every network change and once a minute. Lost shares come back with a growing back-off from 30 seconds to 15 minutes." },
+      { "icon": "timer-off-outline", "title": "No more beachballs", "text": "A share counts as dead only if the server stops answering on port 445 or reading the folder hangs twice in a row. Right after wake nothing is unmounted." },
+      { "icon": "key-outline", "title": "Uses the macOS keychain", "text": "Mounts through macOS (NetFS and NetAuth), which takes the password from the entry the Finder creates. The app never reads or stores your passwords." },
+      { "icon": "folder-outline", "title": "Clean paths", "text": "Keeps shares at /Volumes/<name> instead of <name>-1, so scripts and backups always find them, and tells you if a leftover folder is in the way." },
+      { "icon": "nas", "title": "Gentle with your NAS", "text": "If a server rejects the login, ShareMount stops retrying until you sign in again, so your NAS account is not locked out." },
+      { "icon": "cloud-sync-outline", "title": "All your Macs", "text": "With iCloud Drive the list of shares (not the passwords) is shared between your Macs. Passwords stay in each Mac's keychain." },
+      { "icon": "menu", "title": "Native menu", "text": "Designed like the Wi-Fi and Bluetooth menus of macOS 26 and 27, with free space per share, connection time and one click to open, disconnect or reconnect." },
+      { "icon": "plus-circle-outline", "title": "Easy setup", "text": "Add shares by hand, pick a server found via Bonjour, paste an smb:// address, or adopt shares already mounted in the Finder." }
+    ],
+    "how": { "cols": 3, "items": [
+      { "icon": "lan-connect", "title": "Port 445", "text": "A quick check on the SMB port tells whether a server is reachable at all." },
+      { "icon": "timer-sand", "title": "10 seconds", "text": "If reading a folder takes longer than that, twice in a row, the mount counts as hung." },
+      { "icon": "lock-outline", "title": "0 passwords", "text": "ShareMount mounts through macOS, which takes them from the keychain." }
+    ] }
+  }
+}
