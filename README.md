@@ -1,13 +1,11 @@
 <div align="center">
 
-<img src="docs/icon.png" width="96" alt="ShareMount icon" />
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/readme-title-dark.png" />
+  <img src="docs/images/readme-title-light.png" alt="ShareMount: Your shares. Always there. The menu with three connected shares, their free space and one server not reachable." />
+</picture>
 
-<h1>ShareMount</h1>
-
-<p><sub><b>FOR THE MAC MENU BAR</b></sub></p>
-
-<p><b>Your shares. Always there.</b><br/>
-A small menu bar app that keeps SMB shares mounted and brings them back after sleep, network changes and NAS restarts.<br/>
+<p>A small menu bar app that keeps SMB shares mounted and brings them back after sleep, network changes and NAS restarts.<br/>
 With the passwords macOS already keeps for the Finder.</p>
 
 [![Version](https://img.shields.io/badge/dynamic/xml?url=https%3A%2F%2Fraw.githubusercontent.com%2FSH1FT-W%2Fsharemount%2Fmain%2FInfo.plist&query=%2F%2Fkey%5B.%3D%27CFBundleShortVersionString%27%5D%2Ffollowing-sibling%3A%3Astring%5B1%5D&label=version&style=flat-square&color=4A86F0&labelColor=0B0F17)](https://github.com/SH1FT-W/sharemount/releases/latest)
@@ -16,13 +14,6 @@ With the passwords macOS already keeps for the Finder.</p>
 [![License](https://img.shields.io/badge/license-MIT-4A86F0?style=flat-square&labelColor=0B0F17)](LICENSE)
 
 <p><a href="https://sh1ft-w.github.io/sharemount"><b>Website</b></a> &nbsp;·&nbsp; <a href="https://github.com/SH1FT-W/sharemount/releases/latest"><b>Download</b></a> &nbsp;·&nbsp; <a href="#new">New</a> &nbsp;·&nbsp; <a href="#features">Features</a> &nbsp;·&nbsp; <a href="#how">How it works</a> &nbsp;·&nbsp; <a href="#privacy">Privacy</a> &nbsp;·&nbsp; <a href="#install">Install</a> &nbsp;·&nbsp; <a href="https://github.com/SH1FT-W/sharemount/releases">Releases</a></p>
-
-<br/>
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/menu-dark.png" />
-  <img src="docs/screenshots/menu-light.png" width="330" alt="The ShareMount menu: three connected shares with free space and connection time, one server not reachable, and the actions Reconnect All, Disconnect All, Settings and Open at Login." />
-</picture>
 
 <p><sub>The menu, styled like Wi-Fi and Bluetooth. English and German, following your Mac's preferred language. The screenshots use demo data.</sub></p>
 
