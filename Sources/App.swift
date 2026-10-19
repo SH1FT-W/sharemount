@@ -17,8 +17,8 @@ struct ShareMountApp: App {
                 .environmentObject(engine).environmentObject(updater)
                 .environmentObject(router).environmentObject(prefs)
         } label: {
-            Image(nsImage: MenuBarIcon.make(connected: engine.connectedCount > 0, problem: engine.hasProblem,
-                                            waiting: !engine.networkReady))
+            MenuBarLabel(image: MenuBarIcon.make(connected: engine.connectedCount > 0, problem: engine.hasProblem,
+                                                 waiting: !engine.networkReady))
         }
         .menuBarExtraStyle(.window)
 
@@ -40,6 +40,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async
         -> UNNotificationPresentationOptions { [.banner, .list] }
+
+    /// Klick auf eine Mitteilung: Einstellungen öffnen, bei Freigabe-Meldungen gleich mit dieser Freigabe.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        guard response.actionIdentifier == UNNotificationDefaultActionIdentifier else { return }
+        let key = response.notification.request.identifier
+        await MainActor.run {
+            let router = Router.shared
+            if let id = UUID(uuidString: String(key.prefix(36))), let share = Store.load().first(where: { $0.id == id }) {
+                router.tab = .shares
+                router.editing = share
+            } else if key.hasPrefix("update") {
+                router.tab = .updates
+            } else if key == "store.failed" {
+                router.tab = .log
+            }
+            router.openSettings()
+        }
+    }
+}
+
+/// Menüleisten-Symbol als eigene View, damit sie beim Start openWindow an den Router weitergeben kann
+/// (Mitteilungs-Klicks kommen im AppDelegate an, der selbst keine Fenster öffnen kann).
+private struct MenuBarLabel: View {
+    let image: NSImage
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Image(nsImage: image)
+            .onAppear { Router.shared.openWindowAction = { openWindow(id: "settings") } }
+    }
 }
 
 /// Welcher Reiter/welche Freigabe im Einstellungsfenster gezeigt werden soll (vom Menü aus gesteuert).
@@ -68,6 +98,17 @@ final class Router: ObservableObject {
     }
     @Published var tab: Tab = .shares
     @Published var editing: Share?
+    /// Von der Menüleisten-View gesetzt; ohne sie wird nur ein schon offenes Fenster nach vorne geholt.
+    var openWindowAction: (() -> Void)?
+
+    func openSettings() {
+        if let openWindowAction {
+            openWindowAction()
+        } else {
+            NSApp.windows.first { $0.identifier?.rawValue == "settings" }?.makeKeyAndOrderFront(nil)
+        }
+        NSApp.activate(ignoringOtherApps: true)
+    }
 }
 
 /// Menüleisten-Symbol wie bei den System-Extras in macOS 26/27: ein monochromes Template-Symbol,

@@ -113,7 +113,7 @@ enum Mounter {
 
     static func reachable(_ host: String, timeout: TimeInterval = 3) async -> Bool {
         await withCheckedContinuation { cont in
-            let conn = NWConnection(host: NWEndpoint.Host(host), port: 445, using: .tcp)
+            let conn = NWConnection(host: NWEndpoint.Host(Share.normalizeHost(host)), port: 445, using: .tcp)
             let lock = NSLock()
             var done = false
             let finish: (Bool) -> Void = { ok in

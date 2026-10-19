@@ -43,6 +43,12 @@ final class Engine: ObservableObject {
     private var lastMigration = Date()
     private let pathMonitor = NWPathMonitor()
     private var lastPath: String?
+    private var lastIfaces: String?
+    /// Beginn des aktuellen Netz-Aussetzers und ob er schon im Protokoll steht.
+    private var offlineSince: Date?
+    private var offlineLogged = false
+    /// So lange darf das Netz weg sein, bevor „Warte auf WLAN/LAN“ ins Protokoll kommt.
+    static let offlineLogDelay: TimeInterval = 30
     private var subs: Set<AnyCancellable> = []
 
     #if SNAPSHOT
@@ -101,24 +107,52 @@ final class Engine: ObservableObject {
             Task { @MainActor in
                 guard let self, !self.frozen, sig != self.lastPath else { return }
                 let first = self.lastPath == nil
+                let sameIfaces = self.lastIfaces == ifaces
                 self.lastPath = sig
+                self.lastIfaces = ifaces
                 self.hostCache.removeAll()
                 let wasReady = self.networkReady
                 self.networkReady = ready
                 if ready && !wasReady {
-                    Log.write(first ? L("Netzwerk bereit (\(ifaces))", "Network ready (\(ifaces))") : L("Netzwerk wieder da (\(ifaces))", "Network back (\(ifaces))"))
+                    if first {
+                        Log.write(L("Netzwerk bereit (\(ifaces))", "Network ready (\(ifaces))"))
+                    } else if let since = self.offlineSince, !self.offlineLogged {
+                        // Kurze Aussetzer (Router/DHCP) als eine Zeile statt „Warte …“ + „wieder da“.
+                        let secs = max(1, Int(Date().timeIntervalSince(since).rounded()))
+                        Log.write(L("Netz kurz weg (\(secs) s), wieder da (\(ifaces))", "Network briefly gone (\(secs) s), back (\(ifaces))"))
+                    } else {
+                        Log.write(L("Netzwerk wieder da (\(ifaces))", "Network back (\(ifaces))"))
+                    }
+                    self.offlineSince = nil
+                    self.offlineLogged = false
                     if !first { self.settle(15) }
                     self.retryAt.removeAll()
                     self.schedule(after: 2)      // DHCP/DNS kurz setzen lassen
                     return
                 }
                 if !ready {
-                    if wasReady || first { Log.write(L("Warte auf WLAN/LAN …", "Waiting for Wi-Fi or Ethernet…")) }
+                    if first {
+                        Log.write(L("Warte auf WLAN/LAN …", "Waiting for Wi-Fi or Ethernet…"))
+                        self.offlineLogged = true
+                    } else if wasReady {
+                        // Erst ins Protokoll, wenn das Netz länger als ein kurzer Aussetzer weg ist.
+                        let since = Date()
+                        self.offlineSince = since
+                        self.offlineLogged = false
+                        DispatchQueue.main.asyncAfter(deadline: .now() + Self.offlineLogDelay) { [weak self] in
+                            guard let self, !self.networkReady, self.offlineSince == since, !self.offlineLogged else { return }
+                            self.offlineLogged = true
+                            Log.write(L("Warte auf WLAN/LAN …", "Waiting for Wi-Fi or Ethernet…"))
+                        }
+                    }
                     self.markWaitingForNetwork()
                     return
                 }
                 if first { return }
-                Log.write(L("Netzwerk gewechselt (online über \(ifaces))", "Network changed (online via \(ifaces))"))
+                // Nur das Gateway hat sich geändert (z. B. IPv4-Router kurz weg, IPv6 bleibt): nicht protokollieren.
+                if !sameIfaces {
+                    Log.write(L("Netzwerk gewechselt (online über \(ifaces))", "Network changed (online via \(ifaces))"))
+                }
                 self.settle(15)
                 self.retryAt.removeAll()
                 self.schedule(after: 3)

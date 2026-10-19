@@ -19,7 +19,14 @@ struct Share: Codable, Identifiable, Hashable {
     var url: URL? {
         var c = URLComponents()
         c.scheme = "smb"
-        c.host = host
+        // Nackte IPv6-Adresse („fe80::1“) braucht eckige Klammern, sonst gibt URLComponents nil zurück.
+        // Andere Hosts bleiben unverändert (Bonjour-Dienstnamen löst NetFS selbst auf).
+        if host.contains(":") {
+            let h = Self.normalizeHost(host)
+            c.host = h.contains(":") ? "[\(h)]" : h
+        } else {
+            c.host = host
+        }
         c.path = "/" + share
         return c.url
     }
@@ -66,7 +73,10 @@ struct Share: Codable, Identifiable, Hashable {
         if let r = h.range(of: "._smb._tcp", options: .caseInsensitive) {
             h = String(h[..<r.lowerBound]).replacingOccurrences(of: " ", with: "-") + ".local"
         }
-        if !h.hasPrefix("["), let colon = h.lastIndex(of: ":"), h.firstIndex(of: ":") == colon,
+        // „[fe80::1]“ oder „[fe80::1]:445“ → „fe80::1“, damit beide Schreibweisen zusammenpassen.
+        if h.hasPrefix("["), let close = h.firstIndex(of: "]") {
+            h = String(h[h.index(after: h.startIndex)..<close])
+        } else if let colon = h.lastIndex(of: ":"), h.firstIndex(of: ":") == colon,
            Int(h[h.index(after: colon)...]) != nil {
             h = String(h[..<colon])
         }
