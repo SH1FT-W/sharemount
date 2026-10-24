@@ -1,8 +1,8 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/readme-title-dark.png" />
-  <img src="docs/images/readme-title-light.png" alt="ShareMount: Your shares. Always there. The menu with three connected shares, their free space and one server not reachable." />
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/readme-title-dark.webp" />
+  <img src="docs/images/readme-title-light.webp" alt="ShareMount: Your shares. Always there. The menu with three connected shares, their free space and one server not reachable." />
 </picture>
 
 <p>A small menu bar app that keeps SMB shares mounted and brings them back after sleep, network changes and NAS restarts.<br/>
@@ -27,10 +27,12 @@ With the passwords macOS already keeps for the Finder.</p>
 
 The latest releases make ShareMount at home on a shared Mac, give its buttons the Liquid Glass look and switch to calendar versions.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/readme-cards-new-dark.png" />
-  <img src="docs/images/readme-cards-new-light.png" alt="Only your own mounts (2.5): with fast user switching, every signed-in user runs their own ShareMount and only sees the shares they mounted themselves, other users' mounts are never shown as yours or disconnected. Updates from any account (2.5): if the app belongs to another user, macOS asks for an administrator password and the app keeps its owner, after an update ShareMount restarts by itself for the others, mounts stay connected. Calendar versions (26.10.4): year, month and the release of that month, 26.10.4 is the fourth release of October 2026, the jump from 2.5 is intended. Glass buttons (2.4.2): on macOS 26 and 27 the install and notice buttons use the Liquid Glass style, and the menu rows follow the window corners." />
-</picture>
+<!-- cards:new -->
+<table>
+<tr><td width="34" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/account-multiple-outline-dark.svg"><img src="docs/images/icons/account-multiple-outline-light.svg" width="26" height="26" alt=""></picture></td><td width="46%" valign="top"><b>Only your own mounts</b> <code>2.5</code><br>With fast user switching, every signed-in user runs their own ShareMount and only sees the shares they mounted themselves. Other users' mounts are never shown as yours or disconnected.</td><td width="34" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/update-dark.svg"><img src="docs/images/icons/update-light.svg" width="26" height="26" alt=""></picture></td><td width="46%" valign="top"><b>Updates from any account</b> <code>2.5</code><br>If the app belongs to another user, macOS asks for an administrator password and the app keeps its owner. After an update ShareMount restarts by itself for the others, mounts stay connected.</td></tr>
+<tr><td width="34" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/calendar-outline-dark.svg"><img src="docs/images/icons/calendar-outline-light.svg" width="26" height="26" alt=""></picture></td><td width="46%" valign="top"><b>Calendar versions</b> <code>26.10.4</code><br>Year, month and the release of that month: 26.10.4 is the fourth release of October 2026. The jump from 2.5 is intended, the update check finds it as usual.</td><td width="34" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/blur-dark.svg"><img src="docs/images/icons/blur-light.svg" width="26" height="26" alt=""></picture></td><td width="46%" valign="top"><b>Glass buttons</b> <code>2.4.2</code><br>On macOS 26 and 27 the install and notice buttons use the Liquid Glass style, and the menu rows follow the window corners.</td></tr>
+</table>
+<!-- /cards:new -->
 
 If someone else already uses `/Volumes/Name`, yours is mounted at `Name-1` without a warning. While your session is in the background, checking and reconnecting go on; windows wait until you are back.
 
@@ -44,10 +46,14 @@ Every change, release by release, in the [releases](https://github.com/SH1FT-W/s
 
 macOS mounts a network share once and then forgets about it. After the Mac wakes up, switches Wi-Fi or the NAS reboots, the share is gone, or worse, it hangs and the Finder beachballs. Scripts and backups that expect `/Volumes/Media` suddenly find `/Volumes/Media-1`. ShareMount watches your shares in the background and quietly fixes what macOS leaves broken.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/readme-cards-features-dark.png" />
-  <img src="docs/images/readme-cards-features-light.png" alt="Reconnects on its own: checks at launch, after wake, on every network change and once a minute, lost shares come back with a growing back-off from 30 seconds to 15 minutes. No more beachballs: a share counts as dead only if the server stops answering on port 445 or reading the folder hangs twice in a row, right after wake nothing is unmounted. Uses the macOS keychain: mounts through macOS (NetFS and NetAuth), which takes the password from the entry the Finder creates, the app never reads or stores your passwords. Clean paths: keeps shares at /Volumes/name instead of name-1, so scripts and backups always find them, and tells you if a leftover folder is in the way. Gentle with your NAS: if a server rejects the login, ShareMount stops retrying until you sign in again, so your NAS account is not locked out. All your Macs: with iCloud Drive the list of shares (not the passwords) is shared between your Macs, passwords stay in each Mac's keychain. Native menu: designed like the Wi-Fi and Bluetooth menus of macOS 26 and 27, with free space per share, connection time and one click to open, disconnect or reconnect. Easy setup: add shares by hand, pick a server found via Bonjour, paste an smb address, or adopt shares already mounted in the Finder." />
-</picture>
+<!-- cards:features -->
+<table>
+<tr><td width="34" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/autorenew-dark.svg"><img src="docs/images/icons/autorenew-light.svg" width="26" height="26" alt=""></picture></td><td width="46%" valign="top"><b>Reconnects on its own</b><br>Checks at launch, after wake, on every network change and once a minute. Lost shares come back with a growing back-off from 30 seconds to 15 minutes.</td><td width="34" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/timer-off-outline-dark.svg"><img src="docs/images/icons/timer-off-outline-light.svg" width="26" height="26" alt=""></picture></td><td width="46%" valign="top"><b>No more beachballs</b><br>A share counts as dead only if the server stops answering on port 445 or reading the folder hangs twice in a row. Right after wake nothing is unmounted.</td></tr>
+<tr><td width="34" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/key-outline-dark.svg"><img src="docs/images/icons/key-outline-light.svg" width="26" height="26" alt=""></picture></td><td width="46%" valign="top"><b>Uses the macOS keychain</b><br>Mounts through macOS (NetFS and NetAuth), which takes the password from the entry the Finder creates. The app never reads or stores your passwords.</td><td width="34" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/folder-outline-dark.svg"><img src="docs/images/icons/folder-outline-light.svg" width="26" height="26" alt=""></picture></td><td width="46%" valign="top"><b>Clean paths</b><br>Keeps shares at /Volumes/<name> instead of <name>-1, so scripts and backups always find them, and tells you if a leftover folder is in the way.</td></tr>
+<tr><td width="34" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/nas-dark.svg"><img src="docs/images/icons/nas-light.svg" width="26" height="26" alt=""></picture></td><td width="46%" valign="top"><b>Gentle with your NAS</b><br>If a server rejects the login, ShareMount stops retrying until you sign in again, so your NAS account is not locked out.</td><td width="34" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/cloud-sync-outline-dark.svg"><img src="docs/images/icons/cloud-sync-outline-light.svg" width="26" height="26" alt=""></picture></td><td width="46%" valign="top"><b>All your Macs</b><br>With iCloud Drive the list of shares (not the passwords) is shared between your Macs. Passwords stay in each Mac's keychain.</td></tr>
+<tr><td width="34" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/menu-dark.svg"><img src="docs/images/icons/menu-light.svg" width="26" height="26" alt=""></picture></td><td width="46%" valign="top"><b>Native menu</b><br>Designed like the Wi-Fi and Bluetooth menus of macOS 26 and 27, with free space per share, connection time and one click to open, disconnect or reconnect.</td><td width="34" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/plus-circle-outline-dark.svg"><img src="docs/images/icons/plus-circle-outline-light.svg" width="26" height="26" alt=""></picture></td><td width="46%" valign="top"><b>Easy setup</b><br>Add shares by hand, pick a server found via Bonjour, paste an smb:// address, or adopt shares already mounted in the Finder.</td></tr>
+</table>
+<!-- /cards:features -->
 
 Plus **several users on one Mac** (every signed-in user runs their own ShareMount and only sees their own mounts, see [New](#new)), **notifications** when a share is lost, a password is rejected or an update is available (at most once every 10 minutes per share), and **updates from GitHub Releases**, verified before anything is replaced (see [Updates](#updates)).
 
@@ -68,10 +74,11 @@ Plus **several users on one Mac** (every signed-in user runs their own ShareMoun
 
 ShareMount checks at launch, after wake, on every network change and once a minute. A share counts as dead only when the server stops answering or reading the folder hangs, twice in a row. Only then is it unmounted and mounted again.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/readme-cards-how-dark.png" />
-  <img src="docs/images/readme-cards-how-light.png" alt="Port 445: a quick check on the SMB port tells whether a server is reachable at all. 10 seconds: if reading a folder takes longer than that, twice in a row, the mount counts as hung. 0 passwords: ShareMount mounts through macOS, which takes them from the keychain." />
-</picture>
+<!-- cards:how -->
+<table>
+<tr><td width="34" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/lan-connect-dark.svg"><img src="docs/images/icons/lan-connect-light.svg" width="26" height="26" alt=""></picture></td><td width="29%" valign="top"><b>Port 445</b><br>A quick check on the SMB port tells whether a server is reachable at all.</td><td width="34" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/timer-sand-dark.svg"><img src="docs/images/icons/timer-sand-light.svg" width="26" height="26" alt=""></picture></td><td width="29%" valign="top"><b>10 seconds</b><br>If reading a folder takes longer than that, twice in a row, the mount counts as hung.</td><td width="34" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/lock-outline-dark.svg"><img src="docs/images/icons/lock-outline-light.svg" width="26" height="26" alt=""></picture></td><td width="29%" valign="top"><b>0 passwords</b><br>ShareMount mounts through macOS, which takes them from the keychain.</td></tr>
+</table>
+<!-- /cards:how -->
 
 <details>
 <summary><b>Inside the source</b></summary>
