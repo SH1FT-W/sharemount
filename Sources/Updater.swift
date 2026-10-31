@@ -24,6 +24,8 @@ final class Updater: ObservableObject {
     @Published private(set) var notes = ""
     @Published private(set) var lastCheck: Date?
     @Published private(set) var hasToken = false
+    /// The saved token was rejected (401) and the check fell back to anonymous access.
+    @Published private(set) var tokenInvalid = false
     /// Zuletzt gefundene neuere Version (bleibt auch bei „Update fehlgeschlagen“ bekannt – fürs Update-Fenster).
     @Published private(set) var offeredVersion: String?
 
@@ -112,6 +114,7 @@ final class Updater: ObservableObject {
         TokenStore.write(t)
         hasToken = !t.isEmpty
         tokenExpiresSoon = nil
+        tokenInvalid = false
         Log.write(t.isEmpty ? L("GitHub-Token entfernt", "GitHub token removed") : L("GitHub-Token gespeichert", "GitHub token saved"))
         if !t.isEmpty { Task { await check() } } else { state = .idle }
     }
@@ -142,8 +145,14 @@ final class Updater: ObservableObject {
                 let retry = try await UpdateCore.fetchLatestRelease(repo: Self.repo, userAgent: userAgent, token: nil)
                 if retry.1?.statusCode == 200 {
                     (data, http, used) = (retry.0, retry.1, nil)
-                    Log.write(L("Update-Prüfung: GitHub-Token ungültig, ohne Token geprüft", "Update check: GitHub token invalid, checked without token"))
+                    // Log once per run instead of on every 6-hour check; the settings show it until the token is replaced or removed.
+                    if !tokenInvalid {
+                        Log.write(L("Update-Prüfung: GitHub-Token ungültig, ohne Token geprüft", "Update check: GitHub token invalid, checked without token"))
+                    }
+                    tokenInvalid = true
                 }
+            } else if used != nil, http?.statusCode == 200 {
+                tokenInvalid = false
             }
             noteTokenExpiry(http)
             switch http?.statusCode ?? 0 {

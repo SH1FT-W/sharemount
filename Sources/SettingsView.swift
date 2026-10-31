@@ -335,6 +335,13 @@ struct UpdatesTab: View {
                         .font(.caption).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     LabeledContent(L("Token", "Token"), value: updater.hasToken ? L("hinterlegt", "saved") : L("keiner", "none"))
+                    if updater.tokenInvalid {
+                        // Expired or revoked token: updates keep working anonymously, so only a hint here.
+                        Text(L("GitHub lehnt den Token ab (abgelaufen oder widerrufen). Updates kommen trotzdem, ohne Token. Ersetzen oder entfernen.",
+                               "GitHub rejects the token (expired or revoked). Updates still work without it. Replace or remove it."))
+                            .font(.caption).foregroundStyle(.orange)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     if let d = updater.tokenExpiresSoon {
                         Text(L("Läuft am \(d.formatted(date: .numeric, time: .omitted)) ab", "Expires on \(d.formatted(date: .numeric, time: .omitted))")).foregroundStyle(.orange)
                     }
