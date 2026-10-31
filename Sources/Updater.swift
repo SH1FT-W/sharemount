@@ -1,11 +1,10 @@
 import AppKit
 
 /// Updates aus den GitHub-Releases von SH1FT-W/sharemount.
-/// Öffentliche Releases brauchen keinen Token. Ein Token (nur Lesen, siehe TokenStore) ist optional:
-/// nur für ein privates Repo/einen privaten Fork oder wenn das GitHub-Limit ohne Anmeldung (60/Std.) erreicht ist.
+/// The repository is public, so updates are checked and downloaded without a GitHub token.
 /// Installiert wird nur, wenn Prüfsumme, Bundle-ID und Version stimmen und die Signatur gültig ist (ad-hoc, kein Zertifikat).
 /// Die Schritte selbst (Laden, Prüfen, Tauschen) liegen in Shared/Sources/UpdateCore.swift; hier bleibt, was
-/// ShareMount eigen ist: Token, Benutzerwechsel, Tausch mit Administrator-Rechten, Protokoll.
+/// ShareMount eigen ist: Benutzerwechsel, Tausch mit Administrator-Rechten, Protokoll.
 @MainActor
 final class Updater: ObservableObject {
     enum State: Equatable {
@@ -18,14 +17,9 @@ final class Updater: ObservableObject {
     }
 
     @Published private(set) var state: State = .idle
-    /// Ablaufdatum des Tokens, wenn es in weniger als 30 Tagen abläuft.
-    @Published private(set) var tokenExpiresSoon: Date?
     /// Versionshinweise des verfügbaren Updates (Release-Text auf GitHub).
     @Published private(set) var notes = ""
     @Published private(set) var lastCheck: Date?
-    @Published private(set) var hasToken = false
-    /// The saved token was rejected (401) and the check fell back to anonymous access.
-    @Published private(set) var tokenInvalid = false
     /// Zuletzt gefundene neuere Version (bleibt auch bei „Update fehlgeschlagen“ bekannt – fürs Update-Fenster).
     @Published private(set) var offeredVersion: String?
 
@@ -39,14 +33,12 @@ final class Updater: ObservableObject {
         let notes: String
         let zip: URL          // API-URL des Assets
         let checksum: URL
-        /// Token, mit dem das Release gefunden wurde (nil = öffentlich, ohne Anmeldung).
-        let token: String?
     }
 
     private var userAgent: String { "ShareMount/\(AppInfo.version)" }
 
     init() {
-        hasToken = TokenStore.exists
+        TokenStore.removeLeftover()
         // Kurz nach dem Start, danach alle 6 Stunden still prüfen (abschaltbar in den Einstellungen).
         // Beim Start-Check erscheint bei einem Update das Fenster „Neue Version“.
         DispatchQueue.main.asyncAfter(deadline: .now() + 20) { [weak self] in
@@ -108,17 +100,6 @@ final class Updater: ObservableObject {
         NSApp.terminate(nil)
     }
 
-    /// Token aus den Einstellungen speichern (statt per Terminal). Leer = löschen.
-    func setToken(_ token: String) {
-        let t = token.trimmingCharacters(in: .whitespacesAndNewlines)
-        TokenStore.write(t)
-        hasToken = !t.isEmpty
-        tokenExpiresSoon = nil
-        tokenInvalid = false
-        Log.write(t.isEmpty ? L("GitHub-Token entfernt", "GitHub token removed") : L("GitHub-Token gespeichert", "GitHub token saved"))
-        if !t.isEmpty { Task { await check() } } else { state = .idle }
-    }
-
     /// Nach einem Update einmal „Was ist neu“ als Mitteilung zeigen.
     private func showNotesAfterUpdate() {
         guard let p = Prefs.shared.pendingNotes else { return }
@@ -132,49 +113,27 @@ final class Updater: ObservableObject {
 
     func check(silent: Bool = false, atLaunch: Bool = false) async {
         if case .installing = state { return }
-        let token = TokenStore.read()      // optional – öffentliche Releases gehen ohne
         let previous = state
         // Stilles Prüfen ändert die Anzeige nicht (sonst verschwindet „Update installieren“ kurz aus dem Menü).
         if !silent { state = .checking }
         defer { lastCheck = Date() }
         do {
-            var used = token
-            var (data, http) = try await UpdateCore.fetchLatestRelease(repo: Self.repo, userAgent: userAgent, token: used)
-            // Abgelaufener/ungültiger Token: ein öffentliches Repo geht auch ohne – dann ohne weiter.
-            if http?.statusCode == 401, used != nil {
-                let retry = try await UpdateCore.fetchLatestRelease(repo: Self.repo, userAgent: userAgent, token: nil)
-                if retry.1?.statusCode == 200 {
-                    (data, http, used) = (retry.0, retry.1, nil)
-                    // Log once per run instead of on every 6-hour check; the settings show it until the token is replaced or removed.
-                    if !tokenInvalid {
-                        Log.write(L("Update-Prüfung: GitHub-Token ungültig, ohne Token geprüft", "Update check: GitHub token invalid, checked without token"))
-                    }
-                    tokenInvalid = true
-                }
-            } else if used != nil, http?.statusCode == 200 {
-                tokenInvalid = false
-            }
-            noteTokenExpiry(http)
+            let (data, http) = try await UpdateCore.fetchLatestRelease(repo: Self.repo, userAgent: userAgent)
             switch http?.statusCode ?? 0 {
             case 200: break
-            case 401: throw UpdateError(L("Token ungültig oder abgelaufen", "Token invalid or expired"))
-            case 403, 429:
-                throw UpdateError(used == nil ? L("GitHub-Limit erreicht, später erneut versuchen", "GitHub rate limit reached, try again later")
-                                              : L("Kein Zugriff auf \(Self.repo), Token prüfen", "No access to \(Self.repo), check the token"))
-            case 404: throw UpdateError(used == nil ? L("Kein Release gefunden", "No release found")
-                                                   : L("Kein Release gefunden (oder Token ohne Zugriff)", "No release found (or the token has no access)"))
+            case 403, 429: throw UpdateError(L("GitHub-Limit erreicht, später erneut versuchen", "GitHub rate limit reached, try again later"))
+            case 404: throw UpdateError(L("Kein Release gefunden", "No release found"))
             case let c: throw UpdateError(L("GitHub antwortet mit \(c)", "GitHub responded with \(c)"))
             }
             let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
             let found = try GitHubRelease(json: json)
-            // API-Links der Assets (nicht browser_download_url): nur so geht ein Download mit Token
             guard let zip = found.apiURL("ShareMount.zip"), let sum = found.apiURL("ShareMount.zip.sha256") else {
                 throw UpdateError(L("Release ohne ShareMount.zip/.sha256", "Release has no ShareMount.zip/.sha256"))
             }
             let tag = found.version
             let body = ReleaseNotes.cleanNotes(found.notes)
             if UpdateCore.isNewer(tag, than: AppInfo.version) {
-                release = Release(version: tag, notes: body, zip: zip, checksum: sum, token: used)
+                release = Release(version: tag, notes: body, zip: zip, checksum: sum)
                 notes = body
                 offeredVersion = tag
                 state = .available(version: tag)
@@ -224,8 +183,8 @@ final class Updater: ObservableObject {
             try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
 
             state = .installing(L("Lade v\(release.version) …", "Downloading v\(release.version)…"))
-            let zipData = try await UpdateCore.download(release.zip, userAgent: userAgent, token: release.token)
-            let sumText = String(decoding: try await UpdateCore.download(release.checksum, userAgent: userAgent, token: release.token), as: UTF8.self)
+            let zipData = try await UpdateCore.download(release.zip, userAgent: userAgent)
+            let sumText = String(decoding: try await UpdateCore.download(release.checksum, userAgent: userAgent), as: UTF8.self)
 
             state = .installing(L("Prüfe …", "Verifying…"))
             try UpdateCore.verifyChecksum(zipData, sha256Text: sumText)
@@ -300,19 +259,5 @@ final class Updater: ObservableObject {
             Log.write(L("Update: Administrator-Tausch abgebrochen oder fehlgeschlagen", "Update: administrator swap cancelled or failed"), problem: true)
             throw UpdateError(L("Kein Administrator-Passwort eingegeben oder Ersetzen fehlgeschlagen", "No administrator password entered, or replacing failed"))
         }
-    }
-
-    // MARK: Hilfen
-
-    private func noteTokenExpiry(_ http: HTTPURLResponse?) {
-        // Header z. B. "2027-09-26 21:40:00 +0200"
-        guard let raw = http?.value(forHTTPHeaderField: "github-authentication-token-expiration") else {
-            tokenExpiresSoon = nil; return
-        }
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "yyyy-MM-dd HH:mm:ss Z"
-        guard let d = f.date(from: raw.replacingOccurrences(of: " UTC", with: " +0000")) else { return }
-        tokenExpiresSoon = d.timeIntervalSinceNow < 30 * 86400 ? d : nil
     }
 }

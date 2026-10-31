@@ -129,11 +129,6 @@ struct MenuView: View {
         default:
             EmptyView()   // Suchen von Hand: Einstellungen → Updates
         }
-        if let d = updater.tokenExpiresSoon {
-            Text(L("GitHub-Token läuft am \(d.formatted(date: .numeric, time: .omitted)) ab", "GitHub token expires on \(d.formatted(date: .numeric, time: .omitted))"))
-                .font(.system(size: 11)).foregroundStyle(Color(nsColor: .systemOrange))
-                .padding(.horizontal, 33).padding(.bottom, 3)
-        }
     }
 
     private func settings(edit: Share? = nil) {

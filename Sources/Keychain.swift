@@ -36,34 +36,14 @@ enum Keychain {
     }
 }
 
-/// GitHub-Token für Updates (nur Lesen, nur das ShareMount-Repo). Liegt seit 2.0 als Datei nur für
-/// diesen Benutzer lesbar (0600) in Application Support – im Schlüsselbund hätte er nach jedem Update
-/// wieder eine Nachfrage ausgelöst.
+/// Earlier versions could store an optional GitHub token for updates. The repository is public, so the
+/// feature is gone; a token file left over from those versions is deleted once at launch.
 enum TokenStore {
     static var file: URL { Store.localDir.appendingPathComponent("github-token") }
 
-    static func read() -> String? {
-        guard let t = try? String(contentsOf: file, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines) else { return nil }
-        return t.isEmpty ? nil : t
-    }
-
-    static var exists: Bool {
-        FileManager.default.fileExists(atPath: file.path)
-    }
-
-    @discardableResult
-    static func write(_ token: String) -> Bool {
-        let fm = FileManager.default
-        try? fm.createDirectory(at: Store.localDir, withIntermediateDirectories: true)
-        if token.isEmpty {
-            try? fm.removeItem(at: file)
-            return true
-        }
-        guard fm.createFile(atPath: file.path, contents: Data(token.utf8), attributes: [.posixPermissions: 0o600]) else {
-            Log.write(L("GitHub-Token konnte nicht gespeichert werden", "Could not save the GitHub token"))
-            return false
-        }
-        try? fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
-        return true
+    static func removeLeftover() {
+        guard FileManager.default.fileExists(atPath: file.path) else { return }
+        try? FileManager.default.removeItem(at: file)
+        Log.write(L("Alten GitHub-Token entfernt (Updates brauchen keinen Token)", "Removed old GitHub token (updates need no token)"))
     }
 }

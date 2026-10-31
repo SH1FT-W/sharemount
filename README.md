@@ -88,7 +88,7 @@ ShareMount checks at launch, after wake, on every network change and once a minu
 |---|---|
 | `Sources/Engine.swift` | When to check: launch, wake, network changes, timer; back-off; dead-mount detection; path fixes |
 | `Sources/Mounter.swift` | Mount (NetFS, soft mount, no dialogs), probe, unmount, all with timeouts |
-| `Sources/Keychain.swift` | Where a password lives (macOS keychain via NetAuth, metadata only), optional GitHub token file |
+| `Sources/Keychain.swift` | Where a password lives (macOS keychain via NetAuth, metadata only) |
 | `Sources/Store.swift` | `shares.json` (iCloud Drive or Application Support), backup copy, log |
 | `Sources/Updater.swift` | GitHub releases, checksum, signature and bundle checks, in-place swap, administrator swap when the app belongs to another user |
 | `Sources/Session.swift` | Fast user switching: keeps checking in the background, holds windows until the session is in front again |
@@ -156,7 +156,7 @@ Before the app is replaced, ShareMount checks that the download matches the publ
 
 Because ShareMount is ad-hoc signed and the checksum is published in the same release, these checks protect against broken or mixed-up downloads. They cannot protect against a compromised GitHub account, so an update is exactly as trustworthy as this repository's releases.
 
-No GitHub account or token is needed. A read-only token can be entered under *Settings › Updates › GitHub Token (optional)*, which is only useful for a private fork.
+No GitHub account or token is needed.
 
 **Several users on one Mac.** Updates work from any account. If the app in Applications belongs to another user, macOS asks for an administrator password; the app keeps its owner. When one user installs an update, ShareMount restarts by itself for the other signed-in users, and their mounts stay connected. The update window never opens while your session is in the background; it waits until you switch back.
 

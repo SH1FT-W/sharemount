@@ -291,10 +291,6 @@ struct GeneralTab: View {
 struct UpdatesTab: View {
     @EnvironmentObject var updater: Updater
     @EnvironmentObject var prefs: Prefs
-    @State private var token = ""
-    @State private var editingToken = false
-    /// Aufgeklappt nur, wenn schon ein Token hinterlegt ist – sonst braucht man den Bereich nicht.
-    @State private var showToken = TokenStore.exists
 
     var body: some View {
         Form {
@@ -326,39 +322,6 @@ struct UpdatesTab: View {
             if case .available = updater.state, !updater.notes.isEmpty {
                 Section(L("Neu in dieser Version", "New in This Version")) {
                     Text(updater.notes).font(.callout).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            Section {
-                DisclosureGroup(L("GitHub-Token (optional)", "GitHub Token (optional)"), isExpanded: $showToken) {
-                    Text(L("Nicht nötig: Updates kommen ohne Anmeldung aus den öffentlichen GitHub-Releases. Ein Token (nur Lesen) hilft nur bei einem privaten Fork oder wenn GitHub die Anfragen ohne Anmeldung begrenzt. Er liegt nur für deinen Benutzer lesbar in ~/Library/Application Support/ShareMount.",
-                            "Not needed: updates come from the public GitHub releases without signing in. A read-only token only helps with a private fork or when GitHub rate-limits anonymous requests. It is stored in ~/Library/Application Support/ShareMount, readable only by your user."))
-                        .font(.caption).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    LabeledContent(L("Token", "Token"), value: updater.hasToken ? L("hinterlegt", "saved") : L("keiner", "none"))
-                    if updater.tokenInvalid {
-                        // Expired or revoked token: updates keep working anonymously, so only a hint here.
-                        Text(L("GitHub lehnt den Token ab (abgelaufen oder widerrufen). Updates kommen trotzdem, ohne Token. Ersetzen oder entfernen.",
-                               "GitHub rejects the token (expired or revoked). Updates still work without it. Replace or remove it."))
-                            .font(.caption).foregroundStyle(.orange)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    if let d = updater.tokenExpiresSoon {
-                        Text(L("Läuft am \(d.formatted(date: .numeric, time: .omitted)) ab", "Expires on \(d.formatted(date: .numeric, time: .omitted))")).foregroundStyle(.orange)
-                    }
-                    if editingToken {
-                        SecureField("github_pat_…", text: $token)
-                        HStack {
-                            Button(L("Sichern", "Save")) { updater.setToken(token); token = ""; editingToken = false }
-                                .disabled(token.isEmpty)
-                            Button(L("Abbrechen", "Cancel")) { token = ""; editingToken = false }
-                            Spacer()
-                        }
-                    } else {
-                        HStack {
-                            Button(updater.hasToken ? L("Token ersetzen …", "Replace Token…") : L("Token eintragen …", "Enter Token…")) { editingToken = true }
-                            if updater.hasToken { Button(L("Token entfernen", "Remove Token"), role: .destructive) { updater.setToken("") } }
-                        }
-                    }
                 }
             }
         }
