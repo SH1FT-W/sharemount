@@ -419,7 +419,6 @@ final class Engine: ObservableObject {
         if !force, let r = retryAt[s.id], r.date > Date() { return }
 
         var reachable = await hostReachable(s.host)
-        if reachable { noteServerNetwork(s.host) }
         if !reachable, let mac = wakeMAC(for: s.host), mayWake(s) {
             reachable = await wake(s, mac: mac, force: force)
         }
@@ -563,27 +562,12 @@ final class Engine: ObservableObject {
         return list
     }
 
-    /// Routers of the networks on which each server answered (this session), for Wake on LAN.
-    private var serverNetworks: [String: Set<String>] = [:]
+    /// Only wake a server on one of the share's own networks, never with a broadcast into a café or hotel network.
+    private func mayWake(_ s: Share) -> Bool { Self.mayWake(networks: s.networks, current: currentRouters) }
 
-    private func noteServerNetwork(_ host: String) {
-        guard let r = currentRouters, !r.isEmpty else { return }
-        serverNetworks[Share.normalizeHost(host).lowercased(), default: []].formUnion(r)
-    }
-
-    /// Only wake a server on its own network, not with a broadcast into a café or hotel network.
-    private func mayWake(_ s: Share) -> Bool {
-        Self.mayWake(networks: s.networks, current: currentRouters,
-                     seen: serverNetworks[Share.normalizeHost(s.host).lowercased()])
-    }
-
-    /// Networks set → only on one of them. Otherwise: on a network where the server already answered;
-    /// as long as it never answered (asleep since launch) everywhere except where the router is unknown.
-    static func mayWake(networks: [KnownNetwork], current: Set<String>?, seen: Set<String>?) -> Bool {
-        if !networks.isEmpty { return NetworkIdentity.allows(networks, current: current) }
-        guard let current, !current.isEmpty else { return false }
-        guard let seen, !seen.isEmpty else { return true }
-        return !seen.isDisjoint(with: current)
+    /// Wake on LAN needs a network rule: without networks set no packet goes out, with networks only on one of them.
+    static func mayWake(networks: [KnownNetwork], current: Set<String>?) -> Bool {
+        !networks.isEmpty && NetworkIdentity.allows(networks, current: current)
     }
 
     /// Wake-on-LAN MAC for a server: set on any share of that server.

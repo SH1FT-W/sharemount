@@ -127,12 +127,11 @@ struct SelfTest {
         shortDL.removeLast(6)                                   // sockaddr_dl ends before the MAC
         expect(NetworkIdentity.parseNeighbours(shortDL).isEmpty, "zu kurze Link-Adresse → nichts, kein Lesen über das Ende")
         let net = KnownNetwork(name: "Heimnetz", router: "02:00:5e:10:00:01")
-        expect(Engine.mayWake(networks: [net], current: ["02:00:5e:10:00:01"], seen: nil), "WoL im eigenen Netz")
-        expect(!Engine.mayWake(networks: [net], current: ["aa:bb:cc:dd:ee:01"], seen: nil), "WoL nicht unterwegs (Netz-Regel)")
-        expect(!Engine.mayWake(networks: [], current: ["aa:bb:cc:dd:ee:01"], seen: ["02:00:5e:10:00:01"]), "WoL nicht in fremdem Netz, wenn der Server woanders antwortete")
-        expect(Engine.mayWake(networks: [], current: ["02:00:5e:10:00:01"], seen: ["02:00:5e:10:00:01"]), "WoL dort, wo der Server schon antwortete")
-        expect(Engine.mayWake(networks: [], current: ["02:00:5e:10:00:01"], seen: nil), "WoL ohne Vorwissen erlaubt (Server schläft seit dem Start)")
-        expect(!Engine.mayWake(networks: [], current: nil, seen: nil) && !Engine.mayWake(networks: [], current: [], seen: nil), "WoL nicht ohne erkannten Router (VPN, offline)")
+        expect(Engine.mayWake(networks: [net], current: ["02:00:5e:10:00:01"]), "WoL im eigenen Netz")
+        expect(!Engine.mayWake(networks: [net], current: ["aa:bb:cc:dd:ee:01"]), "WoL nicht unterwegs (Netz-Regel)")
+        expect(!Engine.mayWake(networks: [net], current: nil) && !Engine.mayWake(networks: [net], current: []), "WoL nicht ohne erkannten Router (VPN, offline)")
+        expect(!Engine.mayWake(networks: [], current: ["02:00:5e:10:00:01"]), "WoL ohne Netz-Regel nie, auch nicht im Heimnetz")
+        expect(!Engine.mayWake(networks: [], current: nil), "WoL ohne Netz-Regel und ohne Router nie")
         expect(ShareStatus.away.text == L("Unterwegs, pausiert", "Away, paused") && !ShareStatus.away.isProblem, "unterwegs ist kein Fehler")
 
         print("Wake on LAN")

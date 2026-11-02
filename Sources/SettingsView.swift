@@ -166,8 +166,8 @@ struct ShareEditor: View {
                 Toggle(L("Automatisch verbinden", "Connect automatically"), isOn: $share.enabled)
                 TextField(L("Wake on LAN", "Wake on LAN"), text: Binding(get: { share.wakeMAC ?? "" }, set: { share.wakeMAC = $0 }),
                           prompt: Text(L("MAC-Adresse des Servers, optional", "Server MAC address, optional")))
-                    .help(L("Antwortet der Server nicht, weckt ShareMount ihn vor dem Verbinden und wartet bis zu \(Int(Engine.wakeTimeout)) s. Gilt für alle Freigaben auf diesem Server.",
-                            "If the server does not answer, ShareMount wakes it before connecting and waits up to \(Int(Engine.wakeTimeout)) s. Applies to all shares on this server."))
+                    .help(L("Antwortet der Server nicht, weckt ShareMount ihn vor dem Verbinden und wartet bis zu \(Int(Engine.wakeTimeout)) s. Nur in einem der Netze unter „Nur in bestimmten Netzen“. Gilt für alle Freigaben auf diesem Server.",
+                            "If the server does not answer, ShareMount wakes it before connecting and waits up to \(Int(Engine.wakeTimeout)) s. Only on one of the networks under “Only on certain networks”. Applies to all shares on this server."))
                 Toggle(L("Nur in bestimmten Netzen", "Only on certain networks"), isOn: $limitNetworks)
                     .onChange(of: limitNetworks) { _, on in if on && share.networks.isEmpty { Task { await addCurrentNetwork() } } }
                 if limitNetworks {
@@ -202,6 +202,11 @@ struct ShareEditor: View {
             if limitNetworks {
                 Text(networkInfo ?? L("Erkennt das Netz am Router (MAC-Adresse), ohne Ortungsdienste, per WLAN und LAN. Anderswo wartet die Freigabe („Unterwegs, pausiert“); ein Klick auf sie im Menü verbindet trotzdem.",
                                       "Recognises the network by its router (MAC address), without Location Services, on Wi-Fi and Ethernet. Elsewhere the share waits (“Away, paused”); clicking it in the menu still connects."))
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            if wakeMACWithoutNetwork {
+                Label(L("Wake on LAN braucht eine Netz-Regel: ShareMount weckt den Server nur in einem der eingetragenen Netze.",
+                        "Wake on LAN needs a network rule: ShareMount only wakes the server on one of the listed networks."), systemImage: "info.circle")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             if wakeMACInvalid {
@@ -251,6 +256,11 @@ struct ShareEditor: View {
     static func prefilledWakeMAC(_ share: Share, others: [Share]) -> String? {
         if let own = share.wakeMAC, !own.isEmpty { return own }
         return Engine.wakeMAC(for: share.host, in: others)
+    }
+
+    /// A MAC is set but the share has no network rule, so no magic packet would ever go out.
+    private var wakeMACWithoutNetwork: Bool {
+        !(share.wakeMAC ?? "").trimmingCharacters(in: .whitespaces).isEmpty && (!limitNetworks || share.networks.isEmpty)
     }
 
     private var wakeMACInvalid: Bool {

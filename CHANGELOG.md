@@ -13,7 +13,8 @@ All notable changes to ShareMount. Every release is also listed with its notes o
   reuses networks from other shares.
 - **Wake on LAN.** Optional MAC address per server. If the server does not answer, ShareMount sends a magic
   packet, waits up to 60 seconds and then connects as usual. At most one packet every 5 minutes per server
-  (a click on the share sends one right away), and only on the server's own network.
+  (a click on the share sends one right away). Needs a network rule: the packet only goes out while the Mac
+  is on one of the share's networks; without networks set, the share editor shows a hint next to the MAC field.
 - Self tests for the network rules, the neighbour table parser and the magic packet.
 
 ### Notes
