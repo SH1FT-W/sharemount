@@ -175,6 +175,11 @@ struct SelfTest {
         expect(!UpdateCore.isNewer("26.10.9", than: "26.10.10"), "26.10.9 < 26.10.10")
         expect(UpdateCore.isNewer("26.10.1", than: "26.9.12"), "26.10.1 > 26.9.12")
         expect(UpdateCore.isNewer("27.1.1", than: "26.12.30"), "27.1.1 > 26.12.30")
+        // Tags are the bare version since 26.11; older releases carry "v". Both must be read the same way.
+        expect((try? GitHubRelease(json: ["tag_name": "26.11.1"]))?.version == "26.11.1", "Tag ohne v → 26.11.1")
+        expect((try? GitHubRelease(json: ["tag_name": "v26.10.14"]))?.version == "26.10.14", "alter Tag mit v → 26.10.14")
+        expect((try? GitHubRelease(json: ["tag_name": "26.11.1"])).map { UpdateCore.isNewer($0.version, than: "26.10.14") } == true,
+               "Tag ohne v ist neuer als installierte 26.10.14")
         expect(AppInfo.bundleID == "io.github.sh1ft-w.sharemount", "Updater erwartet die Bundle-ID der App")
         expect(ReleaseNotes.cleanNotes("## Neu\n- **Fix** `x`\n\n\n\nEnde") == "Neu\n• Fix x\n\nEnde", "Markdown → Text")
         expect(ReleaseNotes.cleanNotes("* a\n  * b  ") == "• a\n• b", "Sternchen-Listen, eingerückt")
