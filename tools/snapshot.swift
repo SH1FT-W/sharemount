@@ -79,6 +79,14 @@ struct Snap {
         for (name, dark) in [("light", false), ("dark", true)] {
             shot(env(SharesTab().frame(width: 600, height: 400)), "\(out)/settings-shares-\(name).png", dark)
         }
+        // Share editor with networks and Wake on LAN (demo values only).
+        var roaming = media
+        roaming.networks = [KnownNetwork(name: L("Heimnetz", "Home network"), router: "02:00:5e:10:00:01"),
+                            KnownNetwork(name: L("Büro", "Office"), router: "02:00:5e:10:00:02")]
+        roaming.wakeMAC = "02:00:5e:20:00:01"
+        for (name, dark) in [("light", false), ("dark", true)] {
+            shot(env(ShareEditor(share: roaming, isNew: false, onSave: { _ in }, onCancel: {})), "\(out)/editor-\(name).png", dark)
+        }
         updater.preview("26.10.4", notes: ReleaseNotes.cleanNotes(L("## Neu in 26.10.4\n- Schnelleres Wiederverbinden nach dem Aufwachen\n- Kleinere Verbesserungen",
                                                          "## New in 26.10.4\n- Faster reconnect after wake\n- Minor improvements")))
         for (name, dark) in [("light", false), ("dark", true)] {

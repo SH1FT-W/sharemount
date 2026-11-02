@@ -138,7 +138,7 @@ extension ShareStatus {
         case .mounted: return .accentColor
         case .stale: return Color(nsColor: .systemOrange)
         case .failed, .authFailed: return Color(nsColor: .systemRed)
-        case .mounting, .checking, .waitingForNetwork, .unreachable, .disconnected, .disabled:
+        case .mounting, .checking, .waitingForNetwork, .unreachable, .disconnected, .disabled, .away, .waking:
             return Color.primary.opacity(0.12)
         }
     }
@@ -162,6 +162,8 @@ extension ShareStatus {
         case .unreachable: return "wifi.slash"
         case .disconnected: return "eject.fill"
         case .disabled: return "pause.fill"
+        case .away: return "suitcase.fill"
+        case .waking: return "power"
         }
     }
 }

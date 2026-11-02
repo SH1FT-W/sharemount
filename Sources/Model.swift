@@ -9,6 +9,10 @@ struct Share: Codable, Identifiable, Hashable {
     var enabled = true
     /// Eigener Anzeigename (seit 2.0, optional). Leer = Name der Freigabe.
     var name: String?
+    /// Only connect automatically on these networks (since 26.11). Empty = everywhere.
+    var networks: [KnownNetwork] = []
+    /// MAC address of the server for Wake on LAN (since 26.11, optional). Applies to all shares on the same server.
+    var wakeMAC: String?
 
     var displayName: String {
         let n = name?.trimmingCharacters(in: .whitespaces) ?? ""
@@ -38,7 +42,7 @@ struct Share: Codable, Identifiable, Hashable {
         self.host = host; self.share = share; self.user = user; self.enabled = enabled; self.name = name
     }
 
-    enum CodingKeys: String, CodingKey { case id, host, share, user, enabled, name }
+    enum CodingKeys: String, CodingKey { case id, host, share, user, enabled, name, networks, wakeMAC }
 
     // Tolerant beim Lesen, falls shares.json von Hand bearbeitet wird.
     init(from decoder: Decoder) throws {
@@ -49,6 +53,8 @@ struct Share: Codable, Identifiable, Hashable {
         user = try c.decodeIfPresent(String.self, forKey: .user) ?? NSUserName()
         enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? true
         name = try c.decodeIfPresent(String.self, forKey: .name)
+        networks = KnownNetwork.decodeList(from: c, forKey: .networks)
+        wakeMAC = try? c.decodeIfPresent(String.self, forKey: .wakeMAC)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -59,6 +65,9 @@ struct Share: Codable, Identifiable, Hashable {
         try c.encode(user, forKey: .user)
         try c.encode(enabled, forKey: .enabled)
         if let name, !name.trimmingCharacters(in: .whitespaces).isEmpty { try c.encode(name, forKey: .name) }
+        // Only written when set, so files without these features stay as they were.
+        if !networks.isEmpty { try c.encode(networks, forKey: .networks) }
+        if let wakeMAC, !wakeMAC.trimmingCharacters(in: .whitespaces).isEmpty { try c.encode(wakeMAC, forKey: .wakeMAC) }
     }
 
     func matches(host h: String, share s: String) -> Bool {
@@ -139,6 +148,10 @@ enum ShareStatus: Equatable {
     case disconnected
     case disabled
     case waitingForNetwork
+    /// Not on one of the share's networks: no attempts until the Mac is back on one.
+    case away
+    /// Server did not answer, a Wake on LAN packet went out, waiting for it to come up.
+    case waking
 
     var text: String {
         switch self {
@@ -152,6 +165,8 @@ enum ShareStatus: Equatable {
         case .disconnected: return L("Getrennt (manuell)", "Disconnected manually")
         case .disabled: return L("Automatik aus", "Auto-connect off")
         case .waitingForNetwork: return L("Warte auf WLAN/LAN …", "Waiting for Wi-Fi or Ethernet…")
+        case .away: return L("Unterwegs, pausiert", "Away, paused")
+        case .waking: return L("Wecke Server …", "Waking the server…")
         }
     }
 
@@ -163,7 +178,7 @@ enum ShareStatus: Equatable {
     }
 
     var isMounted: Bool { if case .mounted = self { return true }; return false }
-    var isBusy: Bool { switch self { case .mounting, .checking: return true; default: return false } }
+    var isBusy: Bool { switch self { case .mounting, .checking, .waking: return true; default: return false } }
 }
 
 /// Ein Eintrag im Verlauf einer Freigabe (nur im Speicher, fürs Menü/Einstellungen).

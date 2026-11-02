@@ -10,6 +10,32 @@ struct SelfTest {
         if ok { print("  ✓ \(what)") } else { failures += 1; print("  ✗ \(what) (Zeile \(line))") }
     }
 
+    /// Builds a neighbour table like sysctl NET_RT_FLAGS/RTF_LLINFO returns it (nil MAC = incomplete entry).
+    static func neighbourTable(_ entries: [(ip: String, mac: [UInt8]?)]) -> [UInt8] {
+        var out: [UInt8] = []
+        for e in entries {
+            var sin = sockaddr_in()
+            sin.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+            sin.sin_family = sa_family_t(AF_INET)
+            _ = inet_pton(AF_INET, e.ip, &sin.sin_addr)
+            var dl = sockaddr_dl()
+            dl.sdl_len = UInt8(MemoryLayout<sockaddr_dl>.size)
+            dl.sdl_family = sa_family_t(AF_LINK)
+            dl.sdl_nlen = 3                                         // "en0"
+            dl.sdl_alen = e.mac == nil ? 0 : 6
+            var dlBytes = withUnsafeBytes(of: &dl) { Array($0) }
+            for (i, c) in "en0".utf8.enumerated() { dlBytes[8 + i] = c }
+            for (i, b) in (e.mac ?? []).enumerated() { dlBytes[11 + i] = b }
+            let sinBytes = withUnsafeBytes(of: &sin) { Array($0) }
+            var rtm = rt_msghdr()
+            rtm.rtm_msglen = UInt16(MemoryLayout<rt_msghdr>.size + sinBytes.count + dlBytes.count)
+            rtm.rtm_addrs = RTA_DST | RTA_GATEWAY
+            rtm.rtm_flags = RTF_LLINFO
+            out += withUnsafeBytes(of: &rtm) { Array($0) } + sinBytes + dlBytes
+        }
+        return out
+    }
+
     @MainActor static func main() {
         print("Adressen")
         var p = Share.parse(address: "smb://alex@192.168.1.10/Media")
@@ -60,6 +86,85 @@ struct SelfTest {
         named.name = "  "
         expect(!String(decoding: try! Store.encode([named]), as: UTF8.self).contains("\"name\""), "leerer Name fällt weg")
         expect(named.displayName == "s", "leerer Name → Freigabename")
+
+        print("Netz-Regeln")
+        expect(NetworkIdentity.normalizeMAC("2:0:5e:10:0:1") == "02:00:5e:10:00:01", "MAC mit einstelligen Teilen → zweistellig")
+        expect(NetworkIdentity.normalizeMAC("02-00-5E-10-00-01") == "02:00:5e:10:00:01", "MAC mit Bindestrichen, groß")
+        expect(NetworkIdentity.normalizeMAC("0200.5e10.0001") == "02:00:5e:10:00:01", "MAC in Cisco-Schreibweise")
+        expect(NetworkIdentity.normalizeMAC(" 02005E100001 ") == "02:00:5e:10:00:01", "MAC ohne Trenner")
+        expect(NetworkIdentity.normalizeMAC("02:00:5e:10:00") == nil, "MAC zu kurz → nil")
+        expect(NetworkIdentity.normalizeMAC("02:00:5e:10:00:0g") == nil, "kein Hex → nil")
+        expect(NetworkIdentity.normalizeMAC("ff:ff:ff:ff:ff:ff") == nil && NetworkIdentity.normalizeMAC("0:0:0:0:0:0") == nil, "Broadcast/Null → nil")
+        let table = neighbourTable([("192.168.1.1", [0x02, 0x00, 0x5e, 0x10, 0x00, 0x01]), ("192.168.1.20", nil), ("10.0.0.1", [0, 0x11, 0x32, 0xaa, 0xbb, 0xcc])])
+        let parsed = NetworkIdentity.parseNeighbours(table)
+        expect(parsed["192.168.1.1"] == "02:00:5e:10:00:01", "Nachbartabelle → Router-MAC")
+        expect(parsed["10.0.0.1"] == "00:11:32:aa:bb:cc", "mehrere Einträge")
+        expect(parsed["192.168.1.20"] == nil, "Eintrag ohne MAC (unvollständig) → fehlt")
+        expect(NetworkIdentity.parseNeighbours(Array(table.prefix(40))).isEmpty && NetworkIdentity.parseNeighbours([]).isEmpty, "abgeschnittene/leere Tabelle → nichts, kein Absturz")
+        expect(NetworkIdentity.isIPv4("192.168.1.1") && !NetworkIdentity.isIPv4("fe80::1") && !NetworkIdentity.isIPv4("nas.local"), "nur IPv4-Gateways")
+        let home = KnownNetwork(name: "Heimnetz", router: "02-00-5E-10-00-01")
+        expect(home.router == "02:00:5e:10:00:01", "Netz speichert normalisierte Router-MAC")
+        expect(NetworkIdentity.allows([], current: nil), "keine Netze → überall (auch ohne Router)")
+        expect(NetworkIdentity.allows([home], current: ["02:00:5e:10:00:01"]), "im Heimnetz → verbinden")
+        expect(!NetworkIdentity.allows([home], current: ["aa:bb:cc:dd:ee:ff"]), "anderer Router → unterwegs")
+        expect(!NetworkIdentity.allows([home], current: nil) && !NetworkIdentity.allows([home], current: []), "Router unbekannt → unterwegs")
+        expect(NetworkIdentity.allows([KnownNetwork(name: "Büro", router: "11:22:33:44:55:66"), home], current: ["aa:bb:cc:dd:ee:ff", "02:00:5e:10:00:01"]),
+               "eines von mehreren Netzen, mehrere Gateways")
+        var roaming = Share(host: "nas.local", share: "Media", user: "u")
+        roaming.networks = [home]
+        roaming.wakeMAC = "00:11:32:aa:bb:cc"
+        let roamJSON = try! Store.encode([roaming])
+        let back = try? JSONDecoder().decode([Share].self, from: roamJSON)
+        expect(back?.first?.networks == [home] && back?.first?.wakeMAC == "00:11:32:aa:bb:cc", "Netze und WoL-MAC in shares.json")
+        let plain = String(decoding: try! Store.encode([Share(host: "h", share: "s", user: "u")]), as: UTF8.self)
+        expect(!plain.contains("networks") && !plain.contains("wakeMAC"), "ohne Netze/WoL bleibt shares.json wie bisher")
+        let broken = try? JSONDecoder().decode([Share].self, from: Data(#"[{"host":"h","share":"s","networks":"kaputt"}]"#.utf8))
+        expect(broken?.first?.networks == [], "kaputte Netz-Liste → überall statt Datei unlesbar")
+        let lossy = try? JSONDecoder().decode([Share].self, from: Data(#"[{"host":"h","share":"s","networks":[{"name":"A","router":"02-00-5E-10-00-01"},{"router":"kaputt"},"Müll",{"name":"Doppelt","router":"02:00:5e:10:00:01"},{"name":"B","router":"02:00:5e:10:00:02"}]}]"#.utf8))
+        expect(lossy?.first?.networks.map(\.router) == ["02:00:5e:10:00:01", "02:00:5e:10:00:02"],
+               "von Hand bearbeitet: MAC normalisiert, kaputte Einträge und Doppelte fallen weg, Rest bleibt")
+        var shortDL = neighbourTable([("192.168.1.1", [0x02, 0x00, 0x5e, 0x10, 0x00, 0x01])])
+        shortDL.removeLast(6)                                   // sockaddr_dl ends before the MAC
+        expect(NetworkIdentity.parseNeighbours(shortDL).isEmpty, "zu kurze Link-Adresse → nichts, kein Lesen über das Ende")
+        let net = KnownNetwork(name: "Heimnetz", router: "02:00:5e:10:00:01")
+        expect(Engine.mayWake(networks: [net], current: ["02:00:5e:10:00:01"], seen: nil), "WoL im eigenen Netz")
+        expect(!Engine.mayWake(networks: [net], current: ["aa:bb:cc:dd:ee:01"], seen: nil), "WoL nicht unterwegs (Netz-Regel)")
+        expect(!Engine.mayWake(networks: [], current: ["aa:bb:cc:dd:ee:01"], seen: ["02:00:5e:10:00:01"]), "WoL nicht in fremdem Netz, wenn der Server woanders antwortete")
+        expect(Engine.mayWake(networks: [], current: ["02:00:5e:10:00:01"], seen: ["02:00:5e:10:00:01"]), "WoL dort, wo der Server schon antwortete")
+        expect(Engine.mayWake(networks: [], current: ["02:00:5e:10:00:01"], seen: nil), "WoL ohne Vorwissen erlaubt (Server schläft seit dem Start)")
+        expect(!Engine.mayWake(networks: [], current: nil, seen: nil) && !Engine.mayWake(networks: [], current: [], seen: nil), "WoL nicht ohne erkannten Router (VPN, offline)")
+        expect(ShareStatus.away.text == L("Unterwegs, pausiert", "Away, paused") && !ShareStatus.away.isProblem, "unterwegs ist kein Fehler")
+
+        print("Wake on LAN")
+        let magic = WakeOnLAN.packet(mac: "00-11-32-AA-BB-CC")
+        expect(magic?.count == 102, "Magic Packet: 102 Bytes")
+        expect(magic.map { Array($0.prefix(6)) == [UInt8](repeating: 0xFF, count: 6) } == true, "beginnt mit 6 × FF")
+        let macBytes: [UInt8] = [0x00, 0x11, 0x32, 0xAA, 0xBB, 0xCC]
+        expect(magic.map { d in (0..<16).allSatisfy { Array(d[(6 + $0 * 6)..<(12 + $0 * 6)]) == macBytes } } == true, "dann 16 × die MAC")
+        expect(WakeOnLAN.packet(mac: "nas.local") == nil && WakeOnLAN.packet(mac: "") == nil, "ungültige MAC → kein Paket")
+        let engineShares = [Share(host: "NAS.local", share: "a", user: "u"), { var x = Share(host: "nas.local.", share: "b", user: "u"); x.wakeMAC = "001132aabbcc"; return x }()]
+        expect(Engine.wakeMAC(for: "nas.local", in: engineShares) == "00:11:32:aa:bb:cc", "WoL-MAC gilt für den ganzen Server")
+        expect(Engine.wakeMAC(for: "other.local", in: engineShares) == nil, "anderer Server → keine MAC")
+        // Saving one share: the MAC spreads only on a deliberate change, an empty field never wipes the others.
+        var a = Share(host: "nas.local", share: "a", user: "u"); a.wakeMAC = "00:11:32:aa:bb:cc"
+        var b = Share(host: "NAS.local", share: "b", user: "u"); b.wakeMAC = "00:11:32:aa:bb:cc"
+        let other = Share(host: "pi.local", share: "c", user: "u")
+        let fresh = Share(host: "nas.local", share: "new", user: "u")
+        var synced = Engine.syncWakeMAC([a, b, other, fresh], edited: fresh.id, previous: nil)
+        expect(synced[0].wakeMAC == "00:11:32:aa:bb:cc" && synced[3].wakeMAC == "00:11:32:aa:bb:cc", "neue Freigabe ohne MAC übernimmt die des Servers, löscht nichts")
+        a.wakeMAC = "00-11-32-AA-BB-DD"
+        synced = Engine.syncWakeMAC([a, b, other], edited: a.id, previous: "00:11:32:aa:bb:cc")
+        expect(synced[0].wakeMAC == "00:11:32:aa:bb:dd" && synced[1].wakeMAC == "00:11:32:aa:bb:dd" && synced[2].wakeMAC == nil, "geänderte MAC gilt für den Server, nicht für andere")
+        a.wakeMAC = ""
+        synced = Engine.syncWakeMAC([a, b, other], edited: a.id, previous: "00:11:32:aa:bb:cc")
+        expect(synced[0].wakeMAC == nil && synced[1].wakeMAC == nil, "bewusst geleert → für den Server aus")
+        // Editor showed b's MAC as pre-fill for c (c had none stored), user cleared it: counts as a change.
+        var c = Share(host: "nas.local", share: "c", user: "u")
+        b.wakeMAC = "00:11:32:aa:bb:cc"
+        expect(ShareEditor.prefilledWakeMAC(c, others: [b]) == "00:11:32:aa:bb:cc", "Editor zeigt die MAC des Servers")
+        c.wakeMAC = ""
+        synced = Engine.syncWakeMAC([b, c], edited: c.id, previous: .some("00:11:32:aa:bb:cc"))
+        expect(synced[0].wakeMAC == nil && synced[1].wakeMAC == nil, "vorbefüllte MAC geleert → bleibt geleert")
 
         print("Updates")
         expect(UpdateCore.isNewer("2.0", than: "1.7"), "2.0 > 1.7")

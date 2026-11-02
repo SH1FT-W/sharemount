@@ -33,6 +33,17 @@ final class Engine: ObservableObject {
     private var failCount: [UUID: Int] = [:]
     private var notified: Set<UUID> = []
     private var hostCache: [String: (date: Date, ok: Bool)] = [:]
+    /// IPv4 gateways of the current network path and the router MACs found for them
+    /// (nil = not determined yet or no router found). Only looked up when a share has networks set.
+    private var gateways: [String] = []
+    @Published private(set) var currentRouters: Set<String>?
+    private var routersChecked = Date.distantPast
+    /// Wake on LAN per server: running wake-up (shared by all shares on that server) and when the last packet went out.
+    private var waking: [String: Task<Bool, Never>] = [:]
+    private var lastWake: [String: Date] = [:]
+    /// How long to wait for a woken server, and how long before the next packet to the same server.
+    static let wakeTimeout: TimeInterval = 60
+    static let wakeInterval: TimeInterval = 300
     /// Nach Aufwachen/Netzwechsel stehen Server ein paar Sekunden lang nicht zur Verfügung.
     /// In dieser Zeit wird nichts gelöst – bis 1.7 riss genau das nach jedem Aufwachen alle Mounts ab.
     private var settleUntil = Date.distantPast
@@ -86,6 +97,8 @@ final class Engine: ObservableObject {
                 Log.write(L("Aufgewacht", "Woke from sleep"))
                 self.settle(25)
                 self.retryAt.removeAll()
+                self.currentRouters = nil
+                self.lastWake.removeAll()
                 self.schedule(after: 5)
             }
         }
@@ -100,6 +113,7 @@ final class Engine: ObservableObject {
             // macOS meldet sonst auch Kleinkram und beim Start gleich mehrfach.
             var seen = Set<String>()
             let ifaces = path.availableInterfaces.map(\.name).filter { seen.insert($0).inserted }.joined(separator: ", ")
+            let gwList = Engine.ipv4Gateways(path)
             let gws = path.gateways.map { "\($0)" }.sorted().joined(separator: ",")
             let sig = "\(path.status)|\(ifaces)|\(gws)"
             let ready = path.status == .satisfied
@@ -111,6 +125,9 @@ final class Engine: ObservableObject {
                 self.lastPath = sig
                 self.lastIfaces = ifaces
                 self.hostCache.removeAll()
+                self.gateways = gwList
+                self.currentRouters = nil          // new network: look up the router again
+                self.lastWake.removeAll()
                 let wasReady = self.networkReady
                 self.networkReady = ready
                 if ready && !wasReady {
@@ -227,7 +244,7 @@ final class Engine: ObservableObject {
     private func markWaitingForNetwork() {
         for s in shares {
             let st = status[s.id]
-            guard !(st?.isMounted ?? false), st != .disconnected, st != .disabled else { continue }
+            guard !(st?.isMounted ?? false), st != .disconnected, st != .disabled, st != .away else { continue }
             status[s.id] = .waitingForNetwork
         }
     }
@@ -252,7 +269,7 @@ final class Engine: ObservableObject {
         if problems.count > 1 { return L("Probleme bei \(problems.count) Freigaben", "Problems with \(problems.count) shares") }
         if !networkReady { return L("Warte auf WLAN/LAN …", "Waiting for Wi-Fi or Ethernet…") }
         let n = connectedCount
-        let active = shares.filter(\.enabled).count
+        let active = shares.filter { $0.enabled && status[$0.id] != .away }.count
         if n == shares.count { return n == 1 ? L("Verbunden", "Connected") : L("Alle \(n) verbunden", "All \(n) connected") }
         if n == active && n > 0 { return L("\(n) verbunden", "\(n) connected") }
         return L("\(n) von \(shares.count) verbunden", "\(n) of \(shares.count) connected")
@@ -329,6 +346,7 @@ final class Engine: ObservableObject {
             return
         }
         isChecking = true
+        await refreshRouters()
         await withTaskGroup(of: Void.self) { group in
             for s in shares { group.addTask { await self.check(s, force: force) } }
         }
@@ -336,7 +354,8 @@ final class Engine: ObservableObject {
         lastCheck = Date()
     }
 
-    private func check(_ s: Share, force: Bool = false) async {
+    /// `anyNetwork`: explicit click on the share, connect even when not on one of its networks.
+    private func check(_ s: Share, force: Bool = false, anyNetwork: Bool = false) async {
         if frozen { return }
         guard !busy.contains(s.id) else { return }
         busy.insert(s.id)
@@ -384,7 +403,7 @@ final class Engine: ObservableObject {
             setNotMounted(s, .checking)
             if reachable { problemNotice(s, L("Die Verbindung hing und wurde neu aufgebaut.", "The connection hung and was set up again.")) }
             if !reachable {
-                setUnreachable(s)
+                if isAway(s) { setAway(s) } else { setUnreachable(s) }
                 return
             }
         }
@@ -393,9 +412,18 @@ final class Engine: ObservableObject {
         if !s.enabled { setNotMounted(s, .disabled); return }
         if manuallyDisconnected.contains(s.id) && !force { setNotMounted(s, .disconnected); return }
         if authFailed.contains(s.id) && !force { setNotMounted(s, .authFailed); return }
+        // Not on one of the share's networks: wait quietly (a click on the share still tries).
+        if !s.networks.isEmpty, currentRouters?.isEmpty ?? true { await refreshRouters() }
+        if !anyNetwork, isAway(s) { setAway(s); return }
+        if status[s.id] == .away, !isAway(s) { record(s, L("wieder in einem erlaubten Netz", "back on an allowed network")) }
         if !force, let r = retryAt[s.id], r.date > Date() { return }
 
-        guard await hostReachable(s.host) else {
+        var reachable = await hostReachable(s.host)
+        if reachable { noteServerNetwork(s.host) }
+        if !reachable, let mac = wakeMAC(for: s.host), mayWake(s) {
+            reachable = await wake(s, mac: mac, force: force)
+        }
+        guard reachable else {
             setUnreachable(s)
             return
         }
@@ -461,9 +489,153 @@ final class Engine: ObservableObject {
         mountingHosts.remove(Share.normalizeHost(host).lowercased())
     }
 
+    // MARK: Networks and Wake on LAN
+
+    /// Looks up the router of the current network, only if a share has networks set; at most once a minute
+    /// unless the network changed (then currentRouters is nil).
+    private func refreshRouters() async {
+        guard shares.contains(where: { !$0.networks.isEmpty || $0.wakeMAC != nil }) else { return }
+        if currentRouters != nil, Date().timeIntervalSince(routersChecked) < 60 { return }
+        let found = await NetworkIdentity.routers(gateways: currentGateways())
+        // An empty result (router not in the table yet, e.g. right after wake) is not kept for a minute:
+        // the next check asks again instead of leaving home-only shares "away".
+        routersChecked = found.isEmpty ? .distantPast : Date()
+        if found != currentRouters ?? [] {
+            Log.write(found.isEmpty ? L("Kein Router erkannt (Netz-Regeln: unterwegs)", "No router found (network rules: away)")
+                                    : L("Router im Netz: \(found.sorted().joined(separator: ", "))", "Router on this network: \(found.sorted().joined(separator: ", "))"))
+        }
+        currentRouters = found
+    }
+
+    /// Router MACs of the current network for the editor ("Add Current Network").
+    func detectCurrentRouters() async -> Set<String> {
+        let found = await NetworkIdentity.routers(gateways: currentGateways())
+        currentRouters = found
+        routersChecked = found.isEmpty ? .distantPast : Date()
+        return found
+    }
+
+    /// IPv4 gateways of the live network path (after wake the path may not have reported a change),
+    /// falling back to the last ones reported.
+    private func currentGateways() -> [String] {
+        let live = Self.ipv4Gateways(pathMonitor.currentPath)
+        return live.isEmpty ? gateways : live
+    }
+
+    nonisolated static func ipv4Gateways(_ path: NWPath) -> [String] {
+        path.gateways.compactMap { ep -> String? in
+            if case .hostPort(let host, _) = ep, case .ipv4(let a) = host { return "\(a)" }
+            return nil
+        }
+    }
+
+    private func isAway(_ s: Share) -> Bool {
+        !NetworkIdentity.allows(s.networks, current: currentRouters)
+    }
+
+    private func setAway(_ s: Share) {
+        if status[s.id] != .away { record(s, L("unterwegs (nicht in einem der Netze), pausiert", "away (not on one of its networks), paused")) }
+        setNotMounted(s, .away)
+        retryAt[s.id] = nil
+    }
+
+    /// Wake on LAN belongs to the server: after saving a share, all shares on its server get the same MAC.
+    /// Only a deliberate change spreads (edited share existed and its MAC changed, or a new share brings one);
+    /// a new share without a MAC takes the server's, so an empty field never wipes the MAC of the others.
+    /// `previous`: nil = new share, .some(mac) = its MAC before the edit.
+    static func syncWakeMAC(_ list: [Share], edited id: UUID, previous: String??) -> [Share] {
+        var list = list
+        guard let i = list.firstIndex(where: { $0.id == id }) else { return list }
+        let key = Share.normalizeHost(list[i].host).lowercased()
+        let mac = list[i].wakeMAC.flatMap(NetworkIdentity.normalizeMAC)
+        list[i].wakeMAC = mac
+        let changed: Bool
+        switch previous {
+        case .none: changed = mac != nil
+        case .some(let old): changed = mac != old
+        }
+        let sameServer = list.indices.filter { $0 != i && Share.normalizeHost(list[$0].host).lowercased() == key }
+        if changed {
+            for j in sameServer { list[j].wakeMAC = mac }
+        } else if mac == nil, let server = wakeMAC(for: list[i].host, in: sameServer.map { list[$0] }) {
+            list[i].wakeMAC = server
+        }
+        return list
+    }
+
+    /// Routers of the networks on which each server answered (this session), for Wake on LAN.
+    private var serverNetworks: [String: Set<String>] = [:]
+
+    private func noteServerNetwork(_ host: String) {
+        guard let r = currentRouters, !r.isEmpty else { return }
+        serverNetworks[Share.normalizeHost(host).lowercased(), default: []].formUnion(r)
+    }
+
+    /// Only wake a server on its own network, not with a broadcast into a café or hotel network.
+    private func mayWake(_ s: Share) -> Bool {
+        Self.mayWake(networks: s.networks, current: currentRouters,
+                     seen: serverNetworks[Share.normalizeHost(s.host).lowercased()])
+    }
+
+    /// Networks set → only on one of them. Otherwise: on a network where the server already answered;
+    /// as long as it never answered (asleep since launch) everywhere except where the router is unknown.
+    static func mayWake(networks: [KnownNetwork], current: Set<String>?, seen: Set<String>?) -> Bool {
+        if !networks.isEmpty { return NetworkIdentity.allows(networks, current: current) }
+        guard let current, !current.isEmpty else { return false }
+        guard let seen, !seen.isEmpty else { return true }
+        return !seen.isDisjoint(with: current)
+    }
+
+    /// Wake-on-LAN MAC for a server: set on any share of that server.
+    func wakeMAC(for host: String) -> String? { Self.wakeMAC(for: host, in: shares) }
+
+    static func wakeMAC(for host: String, in shares: [Share]) -> String? {
+        let key = Share.normalizeHost(host).lowercased()
+        return shares.lazy.filter { Share.normalizeHost($0.host).lowercased() == key }
+            .compactMap { $0.wakeMAC.flatMap(NetworkIdentity.normalizeMAC) }.first
+    }
+
+    /// Sends a magic packet and waits up to wakeTimeout for port 445. All shares of a server share one wake-up;
+    /// after a failed one the next packet goes out wakeInterval later (or right away on a click).
+    private func wake(_ s: Share, mac: String, force: Bool) async -> Bool {
+        let key = Share.normalizeHost(s.host).lowercased()
+        if let running = waking[key] {
+            status[s.id] = .waking
+            return await running.value
+        }
+        if !force, let last = lastWake[key], Date().timeIntervalSince(last) < Self.wakeInterval { return false }
+        lastWake[key] = Date()
+        let host = s.host
+        let sent = WakeOnLAN.send(mac: mac)
+        Log.write("\(host): " + (sent ? L("antwortet nicht, Wake on LAN an \(mac) gesendet", "not answering, Wake on LAN sent to \(mac)")
+                                       : L("Wake on LAN an \(mac) konnte nicht gesendet werden", "could not send Wake on LAN to \(mac)")),
+                  problem: !sent)
+        guard sent else { return false }
+        status[s.id] = .waking
+        let started = Date()
+        let task = Task<Bool, Never> {
+            let start = Date()
+            while Date().timeIntervalSince(start) < Self.wakeTimeout {
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                if await Mounter.reachable(host, timeout: 2) { return true }
+            }
+            return false
+        }
+        waking[key] = task
+        let ok = await task.value
+        waking[key] = nil
+        hostCache[host.lowercased()] = (Date(), ok)
+        let secs = Int(Date().timeIntervalSince(started).rounded())
+        Log.write("\(host): " + (ok ? L("aufgewacht nach \(secs) s", "awake after \(secs) s")
+                                     : L("nach \(Int(Self.wakeTimeout)) s noch nicht wach", "still not awake after \(Int(Self.wakeTimeout)) s")),
+                  problem: !ok)
+        return ok
+    }
+
     /// Nur beim Wechsel protokollieren, nicht bei jeder Prüfung erneut.
     private func setUnreachable(_ s: Share) {
-        if status[s.id] != .unreachable { record(s, L("Server \(s.host) nicht erreichbar", "Server \(s.host) not reachable")) }
+        // After a failed wake-up the log already says so; no second "not reachable" line every 5 minutes.
+        if status[s.id] != .unreachable, status[s.id] != .waking { record(s, L("Server \(s.host) nicht erreichbar", "Server \(s.host) not reachable")) }
         setNotMounted(s, .unreachable)
     }
 
@@ -632,7 +804,7 @@ final class Engine: ObservableObject {
         authFailed.remove(s.id)
         retryAt[s.id] = nil
         hostCache[s.host.lowercased()] = nil
-        Task { await check(s, force: true) }
+        Task { await refreshRouters(); await check(s, force: true, anyNetwork: true) }
     }
 
     func disconnect(_ s: Share) {
@@ -682,7 +854,11 @@ final class Engine: ObservableObject {
 
     // MARK: Einstellungen
 
-    func save(_ s: Share) {
+    /// `shownWakeMAC`: the MAC the editor showed when it opened (it pre-fills the server's MAC), so that
+    /// clearing the field counts as a change. Default: the stored one.
+    func save(_ s: Share, shownWakeMAC: String?? = .none) {
+        let stored = shares.first { $0.id == s.id }.map { $0.wakeMAC.flatMap(NetworkIdentity.normalizeMAC) }
+        let previousMAC: String?? = stored == nil ? nil : (shownWakeMAC ?? stored)
         if let i = shares.firstIndex(where: { $0.id == s.id }) {
             let old = shares[i]
             shares[i] = s
@@ -700,11 +876,12 @@ final class Engine: ObservableObject {
         } else {
             shares.append(s)
         }
+        shares = Self.syncWakeMAC(shares, edited: s.id, previous: previousMAC)
         persist()
         refreshCredentials()
         authFailed.remove(s.id)
         retryAt[s.id] = nil
-        Task { await check(s, force: true) }
+        Task { await refreshRouters(); await check(s, force: true) }
     }
 
     func remove(_ s: Share, unmount: Bool) {

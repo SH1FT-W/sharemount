@@ -63,8 +63,9 @@ struct SharesTab: View {
         .padding(16)
         .sheet(item: $router.editing) { s in
             ShareEditor(share: s, isNew: !engine.shares.contains { $0.id == s.id },
-                        others: engine.shares.filter { $0.id != s.id }) { edited in
-                engine.save(edited)
+                        others: engine.shares.filter { $0.id != s.id },
+                        detectRouters: { await engine.detectCurrentRouters() }) { edited in
+                engine.save(edited, shownWakeMAC: .some(ShareEditor.prefilledWakeMAC(s, others: engine.shares.filter { $0.id != s.id })))
                 router.editing = nil
             } onCancel: { router.editing = nil }
         }
@@ -95,7 +96,7 @@ struct SharesTab: View {
                     Label(L("Kein Passwort im Schlüsselbund: „Anmelden“", "No password in the keychain: “Sign In”"), systemImage: "key")
                         .font(.caption).foregroundStyle(.orange)
                 }
-                if st.isProblem { Text(st.text).font(.caption).foregroundStyle(st.color) }
+                if st.isProblem || st == .away { Text(st.text).font(.caption).foregroundStyle(st.isProblem ? st.color : Color.secondary) }
             }
             Spacer()
             if cred != .system || st == .authFailed {
@@ -123,11 +124,20 @@ struct ShareEditor: View {
     @State private var test: String?
     @State private var testing = false
     @State private var resolving = false
+    @State private var limitNetworks: Bool
+    @State private var networkInfo: String?
+    @State private var detecting = false
+    var detectRouters: () async -> Set<String>
 
-    init(share: Share, isNew: Bool, others: [Share] = [], onSave: @escaping (Share) -> Void, onCancel: @escaping () -> Void) {
+    init(share: Share, isNew: Bool, others: [Share] = [], detectRouters: @escaping () async -> Set<String> = { [] },
+         onSave: @escaping (Share) -> Void, onCancel: @escaping () -> Void) {
+        var share = share
+        share.wakeMAC = Self.prefilledWakeMAC(share, others: others)
         _share = State(initialValue: share)
+        _limitNetworks = State(initialValue: !share.networks.isEmpty)
         self.isNew = isNew
         self.others = others
+        self.detectRouters = detectRouters
         self.onSave = onSave
         self.onCancel = onCancel
     }
@@ -154,6 +164,49 @@ struct ShareEditor: View {
                 TextField(L("Anzeigename", "Display Name"), text: Binding(get: { share.name ?? "" }, set: { share.name = $0 }),
                           prompt: Text(share.share.isEmpty ? L("optional", "optional") : share.share))
                 Toggle(L("Automatisch verbinden", "Connect automatically"), isOn: $share.enabled)
+                TextField(L("Wake on LAN", "Wake on LAN"), text: Binding(get: { share.wakeMAC ?? "" }, set: { share.wakeMAC = $0 }),
+                          prompt: Text(L("MAC-Adresse des Servers, optional", "Server MAC address, optional")))
+                    .help(L("Antwortet der Server nicht, weckt ShareMount ihn vor dem Verbinden und wartet bis zu \(Int(Engine.wakeTimeout)) s. Gilt für alle Freigaben auf diesem Server.",
+                            "If the server does not answer, ShareMount wakes it before connecting and waits up to \(Int(Engine.wakeTimeout)) s. Applies to all shares on this server."))
+                Toggle(L("Nur in bestimmten Netzen", "Only on certain networks"), isOn: $limitNetworks)
+                    .onChange(of: limitNetworks) { _, on in if on && share.networks.isEmpty { Task { await addCurrentNetwork() } } }
+                if limitNetworks {
+                    // Not ForEach($share.networks): removing a row from inside a binding-based ForEach can crash.
+                    ForEach(share.networks) { n in
+                        LabeledContent {
+                            HStack(spacing: 6) {
+                                TextField("", text: Binding(get: { share.networks.first { $0.router == n.router }?.name ?? "" }, set: { v in
+                                    if let i = share.networks.firstIndex(where: { $0.router == n.router }) { share.networks[i].name = v }
+                                })).labelsHidden()
+                                Text(n.router).font(.caption.monospaced()).foregroundStyle(.secondary)
+                                Button { share.networks.removeAll { $0.router == n.router } } label: { Image(systemName: "minus.circle") }
+                                    .buttonStyle(.borderless)
+                                    .help(L("Netz entfernen", "Remove network")).accessibilityLabel(L("Netz entfernen", "Remove network"))
+                            }
+                        } label: { Text(L("Netz", "Network")) }
+                    }
+                    LabeledContent {
+                        HStack(spacing: 8) {
+                            Button(detecting ? L("Suche Router …", "Looking for the router…") : L("Aktuelles Netz hinzufügen", "Add Current Network")) {
+                                Task { await addCurrentNetwork() }
+                            }.disabled(detecting)
+                            if !knownNetworks.isEmpty {
+                                Menu(L("Bekannte", "Known")) {
+                                    ForEach(knownNetworks) { n in Button(n.name) { share.networks.append(n) } }
+                                }.fixedSize()
+                            }
+                        }
+                    } label: { Text(share.networks.isEmpty ? L("Netz", "Network") : "") }
+                }
+            }
+            if limitNetworks {
+                Text(networkInfo ?? L("Erkennt das Netz am Router (MAC-Adresse), ohne Ortungsdienste, per WLAN und LAN. Anderswo wartet die Freigabe („Unterwegs, pausiert“); ein Klick auf sie im Menü verbindet trotzdem.",
+                                      "Recognises the network by its router (MAC address), without Location Services, on Wi-Fi and Ethernet. Elsewhere the share waits (“Away, paused”); clicking it in the menu still connects."))
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            if wakeMACInvalid {
+                Label(L("Keine gültige MAC-Adresse (z. B. 00:11:32:aa:bb:cc).", "Not a valid MAC address (for example 00:11:32:aa:bb:cc)."), systemImage: "exclamationmark.triangle")
+                    .font(.caption).foregroundStyle(.orange)
             }
             HStack(spacing: 8) {
                 Button(testing ? L("Teste …", "Testing…") : L("Server testen", "Test Server")) { Task { await runTest() } }
@@ -175,17 +228,60 @@ struct ShareEditor: View {
                     share.host = share.host.trimmingCharacters(in: .whitespaces)
                     share.share = share.share.trimmingCharacters(in: CharacterSet(charactersIn: "/ "))
                     share.user = share.user.trimmingCharacters(in: .whitespaces)
+                    share.wakeMAC = share.wakeMAC.flatMap(NetworkIdentity.normalizeMAC)
+                    if !limitNetworks { share.networks = [] }
+                    for i in share.networks.indices where share.networks[i].name.trimmingCharacters(in: .whitespaces).isEmpty {
+                        share.networks[i].name = share.networks[i].router
+                    }
                     onSave(share)
                 }
                 .keyboardShortcut(.defaultAction)
                 .disabled(share.host.trimmingCharacters(in: .whitespaces).isEmpty || share.share.isEmpty
-                          || share.user.isEmpty || duplicate != nil)
+                          || share.user.isEmpty || duplicate != nil || wakeMACInvalid
+                          || (limitNetworks && share.networks.isEmpty))
             }
         }
         .padding(20)
         .frame(width: 470)
         .onAppear { browser.start() }
         .onDisappear { browser.stop() }
+    }
+
+    /// Wake on LAN is per server: an empty field shows the MAC another share of this server already has.
+    static func prefilledWakeMAC(_ share: Share, others: [Share]) -> String? {
+        if let own = share.wakeMAC, !own.isEmpty { return own }
+        return Engine.wakeMAC(for: share.host, in: others)
+    }
+
+    private var wakeMACInvalid: Bool {
+        let raw = (share.wakeMAC ?? "").trimmingCharacters(in: .whitespaces)
+        return !raw.isEmpty && NetworkIdentity.normalizeMAC(raw) == nil
+    }
+
+    /// Networks other shares already use and this one does not have yet (same name everywhere).
+    private var knownNetworks: [KnownNetwork] {
+        var seen = Set(share.networks.map(\.router))
+        return others.flatMap(\.networks).filter { seen.insert($0.router).inserted }
+    }
+
+    private func addCurrentNetwork() async {
+        detecting = true
+        defer { detecting = false }
+        let routers = await detectRouters()
+        let new = routers.subtracting(share.networks.map(\.router)).sorted()
+        if routers.isEmpty {
+            networkInfo = L("Kein Router erkannt. Mit dem Netz verbunden? Über VPN oder nur IPv6 klappt die Erkennung nicht.",
+                            "No router found. Connected to the network? Detection does not work over VPN or IPv6 only.")
+            return
+        }
+        guard !new.isEmpty else { networkInfo = L("Dieses Netz ist schon in der Liste.", "This network is already in the list."); return }
+        for r in new {
+            // Reuse the name another share gave this router.
+            let name = others.flatMap(\.networks).first { $0.router == r }?.name
+                ?? (share.networks.isEmpty ? L("Heimnetz", "Home network") : L("Netz \(share.networks.count + 1)", "Network \(share.networks.count + 1)"))
+            share.networks.append(KnownNetwork(name: name, router: r))
+        }
+        networkInfo = nil
     }
 
     /// Gleicher Server + gleiche Freigabe schon vorhanden? Zwei Einträge würden sich denselben Mount teilen.

@@ -55,7 +55,7 @@ macOS mounts a network share once and then forgets about it. After the Mac wakes
 </table>
 <!-- /cards:features -->
 
-Plus **several users on one Mac** (every signed-in user runs their own ShareMount and only sees their own mounts, see [New](#new)), **notifications** when a share is lost, a password is rejected or an update is available (at most once every 10 minutes per share), and **updates from GitHub Releases**, verified before anything is replaced (see [Updates](#updates)).
+Plus **home-only shares** (a share can be limited to certain networks; elsewhere it waits as *Away, paused* instead of failing, see [Networks](#networks)), **Wake on LAN** (with the server's MAC address set, ShareMount wakes a sleeping server before it connects), **several users on one Mac** (every signed-in user runs their own ShareMount and only sees their own mounts, see [New](#new)), **notifications** when a share is lost, a password is rejected or an update is available (at most once every 10 minutes per share), and **updates from GitHub Releases**, verified before anything is replaced (see [Updates](#updates)).
 
 <div align="center">
 <picture>
@@ -89,6 +89,7 @@ ShareMount checks at launch, after wake, on every network change and once a minu
 | `Sources/Engine.swift` | When to check: launch, wake, network changes, timer; back-off; dead-mount detection; path fixes |
 | `Sources/Mounter.swift` | Mount (NetFS, soft mount, no dialogs), probe, unmount, all with timeouts |
 | `Sources/Keychain.swift` | Where a password lives (macOS keychain via NetAuth, metadata only) |
+| `Sources/NetworkRules.swift` | Which network the Mac is on (router MAC from the neighbour table), network rules per share, Wake on LAN magic packet |
 | `Sources/Store.swift` | `shares.json` (iCloud Drive or Application Support), backup copy, log |
 | `Sources/Updater.swift` | GitHub releases, Ed25519 release signature, checksum and bundle checks, in-place swap, administrator swap when the app belongs to another user |
 | `Sources/Session.swift` | Fast user switching: keeps checking in the background, holds windows until the session is in front again |
@@ -104,7 +105,8 @@ ShareMount checks at launch, after wake, on every network change and once a minu
 ## Private by design.
 
 - **No tracking.** No analytics, no telemetry, no accounts. There is nothing to sign up for.
-- **Only your servers.** ShareMount talks to your own SMB servers (a quick check on port 445, then the mount), browses for SMB servers via Bonjour on your local network while the share editor is open, and asks `api.github.com` for new releases. Nothing else.
+- **Only your servers.** ShareMount talks to your own SMB servers (a quick check on port 445, then the mount, and a Wake on LAN broadcast on your local network if you set a MAC address), browses for SMB servers via Bonjour on your local network while the share editor is open, and asks `api.github.com` for new releases. Nothing else.
+- **No location.** Networks are recognised by the MAC address of their router, which macOS already knows locally. ShareMount never asks for Location Services and never reads Wi-Fi names.
 - **Passwords** stay in the macOS keychain and are only used by macOS itself.
 - **Plain files.** Your list of shares (server, share name, user name) is stored as a readable `shares.json` in iCloud Drive › Software › ShareMount when iCloud Drive is on, otherwise in `~/Library/Application Support/ShareMount`. The log is at `~/Library/Logs/ShareMount.log`.
 
@@ -139,6 +141,17 @@ From then on ShareMount takes care of itself, updates included. A few things for
 - iCloud Drive, if you want the list of shares synced between Macs
 
 English and German interface, following your Mac's preferred language. Built with Apple frameworks only, no third-party code.
+
+<a id="networks"></a>
+### Networks and Wake on LAN
+
+**Only on certain networks.** In a share's settings, turn on *Only on certain networks* and click *Add Current Network* while you are at home (or in the office). From then on ShareMount connects that share automatically only there. Anywhere else the share shows *Away, paused*: no attempts, no errors, no notifications. Clicking the share in the menu still connects it, for example over a VPN. Networks you added to one share can be picked for the others under *Known*.
+
+ShareMount recognises a network by the MAC address of its router (the default gateway), the same on Wi-Fi and Ethernet. Reading the Wi-Fi name (SSID) would need Location Services since macOS 14, and because ShareMount is only ad-hoc signed, macOS would ask again after every update. The router address needs no permission. Limits: over a full-tunnel VPN or on an IPv6-only network there is no router address to compare, so the share counts as away; a new router means adding the network again.
+
+**Wake on LAN.** Enter the server's MAC address in the share's settings (it applies to all shares on that server). If the server does not answer on port 445, ShareMount sends a magic packet (UDP broadcast, port 9), waits up to 60 seconds for the server to come up and then connects as usual. If it stays asleep, the next packet goes out after 5 minutes at the earliest, or right away when you click the share. The server has to support Wake on LAN and be on the same local network. ShareMount only sends the packet on one of the share's networks, or, without networks set, on a network where the server already answered, so a café or hotel network never gets your NAS's wake-up call.
+
+Both settings are stored in `shares.json`. Update ShareMount on all your Macs before you use them: older versions ignore and, when they save the list, drop these settings.
 
 <a id="updates"></a>
 ### Updates
@@ -197,6 +210,9 @@ That happens when macOS had not finished removing the old mount. ShareMount fixe
 
 **Another user on this Mac has the same share mounted.**
 Each user runs their own ShareMount and only sees their own mounts. If the other user already holds `/Volumes/Name`, yours is mounted at `Name-1` on purpose, without a warning or a path fix.
+
+**A share says "Away, paused" although I am at home.**
+The router was not recognised as one of the share's networks, for example after a new router or while a VPN routes all traffic. Open the share's settings and click *Add Current Network* again. The log shows which router ShareMount sees.
 
 **Does it work with Time Machine shares?**
 Yes. ShareMount ignores the hidden mounts Time Machine creates under `/Volumes/.timemachine`.
