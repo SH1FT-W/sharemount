@@ -2,7 +2,9 @@ import AppKit
 
 /// Updates aus den GitHub-Releases von SH1FT-W/sharemount.
 /// The repository is public, so updates are checked and downloaded without a GitHub token.
-/// Installiert wird nur, wenn Prüfsumme, Bundle-ID und Version stimmen und die Signatur gültig ist (ad-hoc, kein Zertifikat).
+/// Installiert wird nur, wenn die Ed25519-Signatur mit dem fest einkompilierten Schlüssel stimmt (wie bei AgentBar),
+/// so kann selbst ein fremdes Release im Repo nichts einschleusen. Dazu Prüfsumme, Bundle-ID, Version und gültige
+/// Code-Signatur (ad-hoc, kein Zertifikat).
 /// Die Schritte selbst (Laden, Prüfen, Tauschen) liegen in Shared/Sources/UpdateCore.swift; hier bleibt, was
 /// ShareMount eigen ist: Benutzerwechsel, Tausch mit Administrator-Rechten, Protokoll.
 @MainActor
@@ -25,6 +27,9 @@ final class Updater: ObservableObject {
 
     static let repo = "SH1FT-W/sharemount"
     static let appName = "ShareMount"
+    /// Öffentlicher Teil des Release-Schlüssels (Shared/tools/release-key.swift). Der private Teil liegt nie im Repo,
+    /// nur lokal in ~/Library/Application Support/ShareMount Release/ed25519.key.
+    nonisolated static let publicKey = "lf5xS53IDqUZ/x6SmUnNOjyID9UXuBDQQW4j6Ad/b3Y="
     private var release: Release?
     private var timer: Timer?
 
@@ -33,6 +38,22 @@ final class Updater: ObservableObject {
         let notes: String
         let zip: URL          // API-URL des Assets
         let checksum: URL
+        let signature: URL
+    }
+
+    /// Download-Links eines Releases. Ohne .sig (unsigniert) wird das Release gar nicht erst angeboten.
+    nonisolated static func assets(of found: GitHubRelease) throws -> (zip: URL, checksum: URL, signature: URL) {
+        guard let zip = found.apiURL("ShareMount.zip"), let sum = found.apiURL("ShareMount.zip.sha256"),
+              let sig = found.apiURL("ShareMount.zip.sig") else {
+            throw UpdateError(L("Release ohne ShareMount.zip/.sha256/.sig", "Release has no ShareMount.zip/.sha256/.sig"))
+        }
+        return (zip, sum, sig)
+    }
+
+    /// Prüfsumme und Ed25519-Signatur des geladenen Zips; wirft, wenn eins davon nicht stimmt.
+    nonisolated static func verify(zip: Data, checksumText: String, signatureText: String, publicKey: String = publicKey) throws {
+        try UpdateCore.verifyChecksum(zip, sha256Text: checksumText)
+        try UpdateCore.verifyEd25519(zip, signatureText: signatureText, publicKey: publicKey)
     }
 
     private var userAgent: String { "ShareMount/\(AppInfo.version)" }
@@ -127,13 +148,11 @@ final class Updater: ObservableObject {
             }
             let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
             let found = try GitHubRelease(json: json)
-            guard let zip = found.apiURL("ShareMount.zip"), let sum = found.apiURL("ShareMount.zip.sha256") else {
-                throw UpdateError(L("Release ohne ShareMount.zip/.sha256", "Release has no ShareMount.zip/.sha256"))
-            }
+            let files = try Self.assets(of: found)
             let tag = found.version
             let body = ReleaseNotes.cleanNotes(found.notes)
             if UpdateCore.isNewer(tag, than: AppInfo.version) {
-                release = Release(version: tag, notes: body, zip: zip, checksum: sum)
+                release = Release(version: tag, notes: body, zip: files.zip, checksum: files.checksum, signature: files.signature)
                 notes = body
                 offeredVersion = tag
                 state = .available(version: tag)
@@ -185,9 +204,10 @@ final class Updater: ObservableObject {
             state = .installing(L("Lade v\(release.version) …", "Downloading v\(release.version)…"))
             let zipData = try await UpdateCore.download(release.zip, userAgent: userAgent)
             let sumText = String(decoding: try await UpdateCore.download(release.checksum, userAgent: userAgent), as: UTF8.self)
+            let sigText = String(decoding: try await UpdateCore.download(release.signature, userAgent: userAgent), as: UTF8.self)
 
             state = .installing(L("Prüfe …", "Verifying…"))
-            try UpdateCore.verifyChecksum(zipData, sha256Text: sumText)
+            try Self.verify(zip: zipData, checksumText: sumText, signatureText: sigText)
             // Entpacken, Bundle-ID, Version, Code-Signatur (nicht im Menü-Thread); Quarantäne erst nach bestandener Prüfung weg
             let newApp = try await UpdateCore.unpackAndVerify(zip: zipData, in: work, appName: Self.appName,
                                                               bundleID: Bundle.main.bundleIdentifier ?? AppInfo.bundleID, version: release.version)

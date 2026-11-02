@@ -90,7 +90,7 @@ ShareMount checks at launch, after wake, on every network change and once a minu
 | `Sources/Mounter.swift` | Mount (NetFS, soft mount, no dialogs), probe, unmount, all with timeouts |
 | `Sources/Keychain.swift` | Where a password lives (macOS keychain via NetAuth, metadata only) |
 | `Sources/Store.swift` | `shares.json` (iCloud Drive or Application Support), backup copy, log |
-| `Sources/Updater.swift` | GitHub releases, checksum, signature and bundle checks, in-place swap, administrator swap when the app belongs to another user |
+| `Sources/Updater.swift` | GitHub releases, Ed25519 release signature, checksum and bundle checks, in-place swap, administrator swap when the app belongs to another user |
 | `Sources/Session.swift` | Fast user switching: keeps checking in the background, holds windows until the session is in front again |
 | `Sources/*View.swift`, `Components.swift` | Menu, settings and update window (SwiftUI) |
 | `Sources/Lang.swift` | Picks English or German; every visible text is written as `L("German", "English")` |
@@ -152,9 +152,9 @@ ShareMount checks the [GitHub releases](https://github.com/SH1FT-W/sharemount/re
 </picture>
 </div>
 
-Before the app is replaced, ShareMount checks that the download matches the published SHA-256 checksum, that it is ShareMount (bundle identifier) with exactly the announced version, and that its code signature is intact. The new version then replaces the old one in place; if that fails, the old version is put back.
+Before the app is replaced, ShareMount checks that the download carries a valid Ed25519 signature from the maintainer's release key (the public half is built into the app), that it matches the published SHA-256 checksum, that it is ShareMount (bundle identifier) with exactly the announced version, and that its code signature is intact. The new version then replaces the old one in place; if that fails, the old version is put back.
 
-Because ShareMount is ad-hoc signed and the checksum is published in the same release, these checks protect against broken or mixed-up downloads. They cannot protect against a compromised GitHub account, so an update is exactly as trustworthy as this repository's releases.
+The private key never leaves the maintainer's Mac, so from the first signed version on, even someone who takes over the GitHub account or uploads a foreign release cannot get an update installed. Versions up to 26.10.7 only check the checksum; update them once to be covered. ShareMount itself is ad-hoc signed; the release signature is what ties an update to its maintainer.
 
 No GitHub account or token is needed.
 

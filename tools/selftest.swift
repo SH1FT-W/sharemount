@@ -1,4 +1,5 @@
 // Kleine Selbsttests ohne Xcode: ./build.sh test
+import CryptoKit
 import Foundation
 
 @main
@@ -75,6 +76,37 @@ struct SelfTest {
         expect(ReleaseNotes.cleanNotes("* a\n  * b  ") == "• a\n• b", "Sternchen-Listen, eingerückt")
         expect(ReleaseNotes.cleanNotes("\n\n# Titel\n\n") == "Titel", "Leerzeilen am Rand fallen weg")
         expect(ReleaseNotes.cleanNotes("") == "", "leer bleibt leer")
+
+        print("Update-Signatur (Ed25519)")
+        let testKey = Curve25519.Signing.PrivateKey()
+        let testPublic = testKey.publicKey.rawRepresentation.base64EncodedString()
+        let zipData = Data("ShareMount.zip".utf8)
+        let sum = SHA256.hash(data: zipData).map { String(format: "%02x", $0) }.joined() + "  ShareMount.zip\n"
+        let goodSig = try! testKey.signature(for: zipData).base64EncodedString()
+        func accepted(_ data: Data, _ sig: String, key: String) -> Bool {
+            (try? Updater.verify(zip: data, checksumText: sum, signatureText: sig, publicKey: key)) != nil
+        }
+        expect(accepted(zipData, goodSig + "\n", key: testPublic), "gültige Signatur → angenommen")
+        let otherSig = try! Curve25519.Signing.PrivateKey().signature(for: zipData).base64EncodedString()
+        expect(!accepted(zipData, otherSig, key: testPublic), "Signatur eines fremden Schlüssels → verworfen")
+        expect(!accepted(zipData, goodSig, key: Updater.publicKey), "Signatur passt nicht zum App-Schlüssel → verworfen")
+        expect((try? Updater.verify(zip: zipData, checksumText: sum, signatureText: goodSig)) == nil,
+               "Standardaufruf wie in install() prüft gegen Updater.publicKey → fremde Signatur verworfen")
+        expect(!accepted(zipData, "", key: testPublic), "fehlende (leere) Signatur → verworfen")
+        expect(!accepted(zipData, "kein base64", key: testPublic), "kaputte Signatur → verworfen")
+        let otherZip = Data("ShareMount.zip, ausgetauscht".utf8)
+        let otherZipSig = try! testKey.signature(for: otherZip).base64EncodedString()
+        expect(!accepted(otherZip, otherZipSig, key: testPublic), "Prüfsumme passt nicht → verworfen, trotz Signatur")
+        expect(Data(base64Encoded: Updater.publicKey).flatMap { try? Curve25519.Signing.PublicKey(rawRepresentation: $0) } != nil,
+               "Updater.publicKey ist ein gültiger Ed25519-Schlüssel")
+        func release(_ names: [String]) -> GitHubRelease {
+            try! GitHubRelease(json: ["tag_name": "v26.11.1", "assets": names.map {
+                ["name": $0, "url": "https://api.github.com/repos/SH1FT-W/sharemount/releases/assets/\($0.count)"] }])
+        }
+        expect((try? Updater.assets(of: release(["ShareMount.zip", "ShareMount.zip.sha256", "ShareMount.zip.sig"]))) != nil,
+               "Release mit .zip/.sha256/.sig → wird angeboten")
+        expect((try? Updater.assets(of: release(["ShareMount.zip", "ShareMount.zip.sha256"]))) == nil,
+               "Release ohne .sig (unsigniert) → nicht angeboten")
 
         print("Verbindungslogik")
         let t0 = Date(timeIntervalSince1970: 1_700_000_000)

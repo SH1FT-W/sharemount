@@ -7,7 +7,7 @@
 #   ./build.sh snapshot  → Beispiel-Screenshots (Demo-Daten, eigenes Test-Home) nach docs/screenshots
 #   ./build.sh release next ["Was ist neu"]
 #                        → Version setzen, bauen, committen, taggen, pushen und als GitHub-Release
-#                          (ShareMount.zip + .sha256) veröffentlichen; die Apps holen es sich per Update-Button
+#                          (ShareMount.zip + .sha256 + .sig) veröffentlichen; die Apps holen es sich per Update-Button
 #                        Versionen = Kalender-Versionen YY.M.N (Shared/tools/next-version); jedes Release ist die nächste Nummer im Monat
 set -e
 cd "$(dirname "$0")"
@@ -15,7 +15,9 @@ cd "$(dirname "$0")"
 APP=ShareMount
 BUNDLE_ID=io.github.sh1ft-w.sharemount
 REPO=SH1FT-W/sharemount
-SIGN_KEY=""            # kein Ed25519 (siehe RELEASING.md), Updates sind über Prüfsumme + Code-Signatur geschützt
+# Öffentlicher Release-Schlüssel aus dem Updater; der private liegt nur lokal (Shared/tools/release-key.swift)
+SIGN_KEY=$(grep -o 'publicKey = "[^"]*"' Sources/Updater.swift | cut -d'"' -f2)
+[[ -n "$SIGN_KEY" ]] || { echo "Updater.publicKey nicht gefunden."; exit 1; }
 OUT=dist/release
 source Shared/tools/build-common.sh
 
