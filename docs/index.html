@@ -143,6 +143,13 @@ section.tint { background: var(--bg-2); }
 
 /* Funktionen: Kacheln mit Symbol */
 .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.whenmap { max-width: 920px; margin: 0 auto clamp(40px, 5vw, 64px); background: var(--card); border-radius: 22px; padding: 8px 28px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+.whenmap .row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 14px 0; border-top: 1px solid var(--line); font-size: 16px; line-height: 1.45; color: var(--ink-2); }
+.whenmap .row:first-child { border-top: 0; }
+.whenmap .row > span:first-child { color: var(--ink); }
+.whenmap .row.th { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); }
+.whenmap .row.th > span:first-child { color: var(--ink-3); }
+@media (max-width: 640px) { .whenmap .row { grid-template-columns: 1fr; gap: 4px; } .whenmap { padding: 4px 18px; } }
 .tile { background: var(--card); border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow); }
 .tile h3 { margin-bottom: 8px; font-size: 19px; }
 .tile p { color: var(--ink-2); font-size: 16px; }
@@ -240,7 +247,6 @@ footer .fine { flex-basis: 100%; }
     <div class="nav-links">
       <a href="#new"><span class="en">New</span><span class="de">Neu</span></a>
       <a href="#features"><span class="en">Features</span><span class="de">Funktionen</span></a>
-      <a href="#how" class="opt"><span class="en">How it works</span><span class="de">So arbeitet es</span></a>
       <a href="#privacy" class="opt"><span class="en">Privacy</span><span class="de">Datenschutz</span></a>
       <a href="#install"><span class="en">Install</span><span class="de">Installation</span></a>
       <a href="https://github.com/SH1FT-W/sharemount">GitHub</a>
@@ -266,7 +272,7 @@ footer .fine { flex-basis: 100%; }
       <a class="btn ghost" href="https://github.com/SH1FT-W/sharemount"><span class="en">View on GitHub</span><span class="de">Auf GitHub ansehen</span></a>
     </div>
     <p class="meta reveal d3">
-      <span class="pill"><i></i><span id="sharemount-version">Version 26.10.5</span></span>
+      <span class="pill"><i></i><span id="sharemount-version">Version 26.10.7</span></span>
       <span class="en">macOS 14 or later &middot; Apple silicon &middot; Free and open source</span><span class="de">macOS 14 oder neuer &middot; Apple Chip &middot; Kostenlos und Open Source</span>
     </p>
     <div class="stage reveal d3">
@@ -295,9 +301,9 @@ footer .fine { flex-basis: 100%; }
 <section id="new" class="tint">
   <div class="wrap">
     <div class="head center reveal">
-      <p class="eyebrow"><span class="en">Just arrived</span><span class="de">Gerade neu</span></p>
+      <p class="eyebrow"><span class="en">New in 26.10</span><span class="de">Neu in 26.10</span></p>
       <h2><span class="en">One Mac.<br>Several users.</span><span class="de">Ein Mac.<br>Mehrere Benutzer.</span></h2>
-      <p class="lead"><span class="en">The latest releases make ShareMount at home on a shared Mac, give its buttons the Liquid Glass look and switch to calendar versions.</span><span class="de">Die letzten Releases machen ShareMount auf einem gemeinsam genutzten Mac zu Hause, geben seinen Knöpfen den Liquid-Glass-Look und wechseln zu Kalender-Versionen.</span></p>
+      <p class="lead"><span class="en">ShareMount is at home on a shared Mac now. Plus Liquid Glass buttons on macOS 26 and 27 and servers with a plain IPv6 address. Every change is in the <a href="https://github.com/SH1FT-W/sharemount/releases">releases</a>.</span><span class="de">ShareMount ist jetzt auf einem gemeinsam genutzten Mac zu Hause. Dazu Knöpfe im Liquid-Glass-Stil auf macOS 26 und 27 und Server mit reiner IPv6-Adresse. Jede Änderung steht in den <a href="https://github.com/SH1FT-W/sharemount/releases">Releases</a>.</span></p>
     </div>
     <div class="bento">
       <div class="b s8 reveal">
@@ -319,35 +325,6 @@ footer .fine { flex-basis: 100%; }
           <p><span class="en">If the app belongs to another user, macOS asks for an administrator password and the app keeps its owner. After one user installs an update, ShareMount restarts by itself for the others. Mounts stay connected.</span><span class="de">Gehört die App einem anderen Benutzer, fragt macOS nach einem Administrator-Passwort, und die App behält ihren Besitzer. Installiert ein Benutzer ein Update, startet ShareMount bei den anderen von selbst neu. Freigaben bleiben verbunden.</span></p>
         </div>
       </div>
-      <div class="b s4 reveal">
-        <div class="txt">
-          <span class="k"><span class="en">Versions</span><span class="de">Versionen</span></span>
-          <h3><span class="en">Calendar versions.</span><span class="de">Kalender-Versionen.</span></h3>
-          <b class="big">26.10.4</b>
-          <p><span class="en">Year, month and the release of that month: 26.10.4 is the fourth release of October 2026. A new month starts again at .1. The jump from 2.5 is intended, the update check finds it as usual.</span><span class="de">Jahr, Monat und das Release in diesem Monat: 26.10.4 ist das vierte Release im Oktober 2026. Ein neuer Monat beginnt wieder bei .1. Der Sprung von 2.5 ist gewollt, die Update-Suche findet es wie gewohnt.</span></p>
-        </div>
-      </div>
-      <div class="b s4 reveal d1">
-        <div class="txt">
-          <span class="k">Liquid Glass</span>
-          <h3><span class="en">Glass buttons.</span><span class="de">Knöpfe aus Glas.</span></h3>
-          <p><span class="en">On macOS 26 and 27 the install and notice buttons use the glass style, and the menu rows follow the window corners.</span><span class="de">Auf macOS 26 und 27 nutzen die Installations- und Hinweisknöpfe den Glas-Stil, und die Menüzeilen folgen den Fensterecken.</span></p>
-        </div>
-        <div class="pic">
-          <picture>
-            <source media="(prefers-color-scheme: dark)" srcset="screenshots/update-dark.png">
-            <img src="screenshots/update-light.png" width="1000" height="388" loading="lazy" alt="The update window with its three buttons.">
-          </picture>
-        </div>
-      </div>
-      <div class="b s4 reveal d2">
-        <div class="txt">
-          <span class="k"><span class="en">Earlier</span><span class="de">Davor</span></span>
-          <h3><span class="en">Quiet cleanup.</span><span class="de">Stilles Aufräumen.</span></h3>
-          <p><span class="en">2.4.1 removed the code that once carried settings over from the old app identifier. Nothing changed for you, and the app got a little smaller.</span><span class="de">2.4.1 hat den Code entfernt, der Einstellungen einst von der alten App-Kennung übernahm. Für dich hat sich nichts geändert, die App wurde etwas kleiner.</span></p>
-          <p style="margin-top:14px"><a href="https://github.com/SH1FT-W/sharemount/releases"><span class="en">All releases ›</span><span class="de">Alle Releases ›</span></a></p>
-        </div>
-      </div>
     </div>
   </div>
 </section>
@@ -357,43 +334,38 @@ footer .fine { flex-basis: 100%; }
     <div class="head center reveal">
       <p class="eyebrow"><span class="en">Features</span><span class="de">Funktionen</span></p>
       <h2><span class="en">Set it up once.<br>Forget about it.</span><span class="de">Einmal einrichten.<br>Vergessen.</span></h2>
-      <p class="lead"><span class="en">ShareMount watches your shares in the background and quietly fixes what macOS leaves broken.</span><span class="de">ShareMount behält deine Freigaben im Hintergrund im Blick und repariert still, was macOS kaputt zurücklässt.</span></p>
+      <p class="lead"><span class="en">macOS mounts a share once and then forgets about it. ShareMount watches your shares in the background and quietly fixes what macOS leaves broken.</span><span class="de">macOS verbindet eine Freigabe einmal und vergisst sie dann. ShareMount behält deine Freigaben im Hintergrund im Blick und repariert still, was macOS kaputt zurücklässt.</span></p>
+    </div>
+    <div class="whenmap reveal" role="table" aria-label="What ShareMount does when">
+      <div class="row th" role="row"><span role="columnheader"><span class="en">When</span><span class="de">Wenn</span></span><span role="columnheader">ShareMount</span></div>
+      <div class="row" role="row"><span role="cell"><span class="en">ShareMount starts, the Mac wakes, the network changes, once a minute</span><span class="de">ShareMount startet, der Mac aufwacht, das Netzwerk wechselt, einmal pro Minute</span></span><span role="cell"><span class="en">checks every share and mounts what is missing</span><span class="de">prüft jede Freigabe und verbindet, was fehlt</span></span></div>
+      <div class="row" role="row"><span role="cell"><span class="en">The server stops answering on port 445, or reading the folder hangs twice in a row</span><span class="de">Der Server nicht mehr auf Port 445 antwortet oder das Lesen des Ordners zweimal hintereinander hängt</span></span><span role="cell"><span class="en">unmounts the dead share and mounts it again, with retries from 30 seconds to 15 minutes</span><span class="de">trennt die tote Freigabe und verbindet sie neu, mit Versuchen von 30 Sekunden bis 15 Minuten</span></span></div>
+      <div class="row" role="row"><span role="cell"><span class="en">The Mac just woke up</span><span class="de">Der Mac gerade aufgewacht ist</span></span><span role="cell"><span class="en">unmounts nothing</span><span class="de">trennt nichts</span></span></div>
+      <div class="row" role="row"><span role="cell"><span class="en">An old mount is still in the way</span><span class="de">Eine alte Verbindung noch im Weg ist</span></span><span role="cell"><span class="en">keeps the share at <code>/Volumes/Media</code> instead of <code>Media-1</code></span><span class="de">hält die Freigabe unter <code>/Volumes/Media</code> statt <code>Media-1</code></span></span></div>
+      <div class="row" role="row"><span role="cell"><span class="en">The server rejects the login</span><span class="de">Der Server die Anmeldung ablehnt</span></span><span role="cell"><span class="en">stops retrying until you sign in again, so your NAS account is not locked</span><span class="de">hört auf, bis du dich neu anmeldest, damit dein NAS-Konto nicht gesperrt wird</span></span></div>
+      <div class="row" role="row"><span role="cell"><span class="en">You are away from home</span><span class="de">Du nicht zu Hause bist</span></span><span role="cell"><span class="en">waits as <i>Away, paused</i> for shares limited to your networks</span><span class="de">wartet als <i>Unterwegs, pausiert</i> bei Freigaben, die auf deine Netze beschränkt sind</span></span></div>
+      <div class="row" role="row"><span role="cell"><span class="en">The server sleeps</span><span class="de">Der Server schläft</span></span><span role="cell"><span class="en">sends Wake on LAN first, if you entered its MAC address</span><span class="de">schickt erst Wake on LAN, wenn du seine MAC-Adresse eingetragen hast</span></span></div>
     </div>
     <div class="tiles">
-      <div class="tile reveal">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 20v-4h-4"/></svg></div>
-        <h3><span class="en">Reconnects on its own</span><span class="de">Verbindet sich selbst neu</span></h3>
-        <p><span class="en">After wake, Wi-Fi changes and NAS reboots. While a server is away it backs off gently, from 30 seconds up to 15 minutes.</span><span class="de">Nach dem Aufwachen, nach WLAN-Wechseln und NAS-Neustarts. Ist ein Server weg, wartet ShareMount immer etwas länger, von 30 Sekunden bis zu 15 Minuten.</span></p>
-      </div>
-      <div class="tile reveal d1">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
-        <h3><span class="en">No more beachballs</span><span class="de">Kein Wasserball mehr</span></h3>
-        <p><span class="en">Hung mounts are detected with short timeouts and remounted, but never in the first seconds after wake.</span><span class="de">Hängende Freigaben werden mit kurzen Zeitlimits erkannt und neu verbunden, aber nie in den ersten Sekunden nach dem Aufwachen.</span></p>
-      </div>
       <div class="tile reveal d2">
         <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
         <h3><span class="en">Uses the macOS keychain</span><span class="de">Nutzt den macOS-Schlüsselbund</span></h3>
         <p><span class="en">Connects through macOS with the password the Finder already saved. ShareMount never reads or stores a password.</span><span class="de">Verbindet über macOS mit dem Passwort, das der Finder schon gesichert hat. ShareMount liest oder speichert nie ein Passwort.</span></p>
       </div>
-      <div class="tile reveal">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h6l2 2h10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 14h6"/></svg></div>
-        <h3><span class="en">Clean paths</span><span class="de">Saubere Pfade</span></h3>
-        <p><span class="en">Keeps shares at <code>/Volumes/Media</code> instead of <code>Media-1</code>, so scripts and backups always find them, and tells you if a leftover folder is in the way.</span><span class="de">Hält Freigaben unter <code>/Volumes/Media</code> statt <code>Media-1</code>, damit Skripte und Backups sie immer finden, und sagt dir, wenn ein übrig gebliebener Ordner im Weg ist.</span></p>
-      </div>
       <div class="tile reveal d1">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V7z"/><path d="M12 9v4"/><path d="M12 16.5v.01"/></svg></div>
-        <h3><span class="en">Gentle with your NAS</span><span class="de">Schonend für dein NAS</span></h3>
-        <p><span class="en">A rejected password stops all automatic retries until you sign in again, so your account is never locked out.</span><span class="de">Wird ein Passwort abgelehnt, stoppen alle automatischen Versuche, bis du dich neu anmeldest. So wird dein Konto nie gesperrt.</span></p>
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></div>
+        <h3><span class="en">Only on your networks</span><span class="de">Nur in deinen Netzen</span></h3>
+        <p><span class="en">Limit a share to home or the office. Elsewhere it waits as <i>Away, paused</i>: no attempts, no errors, no notifications. Networks are recognised by their router, without Location Services.</span><span class="de">Beschränke eine Freigabe auf zu Hause oder das Büro. Anderswo wartet sie als <i>Unterwegs, pausiert</i>: keine Versuche, keine Fehler, keine Mitteilungen. Netze werden an ihrem Router erkannt, ohne Ortungsdienste.</span></p>
+      </div>
+      <div class="tile reveal d2">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v9"/><path d="M6.3 7.5a8 8 0 1 0 11.4 0"/></svg></div>
+        <h3>Wake on LAN</h3>
+        <p><span class="en">With the server's MAC address, ShareMount wakes a sleeping server and waits up to 60 seconds before it connects. Only on the share's networks.</span><span class="de">Mit der MAC-Adresse des Servers weckt ShareMount einen schlafenden Server und wartet bis zu 60 Sekunden, bevor es verbindet. Nur in den Netzen der Freigabe.</span></p>
       </div>
       <div class="tile reveal d2">
         <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4.5 4.5 0 0 1-.6-9 6 6 0 0 1 11.4 1.5A4 4 0 0 1 17 18z"/></svg></div>
         <h3><span class="en">All your Macs</span><span class="de">Alle deine Macs</span></h3>
         <p><span class="en">With iCloud Drive, your list of shares follows you to every Mac. Passwords stay in each Mac's keychain.</span><span class="de">Mit iCloud Drive kommt deine Liste der Freigaben auf jeden Mac mit. Passwörter bleiben im Schlüsselbund des jeweiligen Mac.</span></p>
-      </div>
-      <div class="tile reveal">
-        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v10H4z"/><path d="M8 20h8"/><path d="M12 16v4"/></svg></div>
-        <h3><span class="en">Native menu</span><span class="de">Natives Menü</span></h3>
-        <p><span class="en">Designed like the Wi-Fi and Bluetooth menus of macOS 26 and 27, with free space per share, connection time and one click to open, disconnect or reconnect.</span><span class="de">Gestaltet wie die WLAN- und Bluetooth-Menüs von macOS 26 und 27, mit freiem Platz je Freigabe, Verbindungsdauer und einem Klick zum Öffnen, Trennen oder Neuverbinden.</span></p>
       </div>
       <div class="tile reveal d1">
         <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></div>
@@ -414,31 +386,6 @@ footer .fine { flex-basis: 100%; }
         </picture>
       </div>
       <p class="cap"><span class="en">Settings: your shares, synced between your Macs through iCloud Drive if you like.</span><span class="de">Einstellungen: deine Freigaben, auf Wunsch über iCloud Drive zwischen deinen Macs abgeglichen.</span></p>
-    </div>
-  </div>
-</section>
-
-<section id="how" class="tint">
-  <div class="wrap">
-    <div class="split">
-      <div class="reveal">
-        <p class="eyebrow"><span class="en">How it works</span><span class="de">So arbeitet es</span></p>
-        <h2><span class="en">Careful, not busy.</span><span class="de">Sorgfältig, nicht hektisch.</span></h2>
-        <p class="lead"><span class="en">ShareMount checks at launch, after wake, on every network change and once a minute. A share counts as dead only when the server stops answering or reading the folder hangs, twice in a row. Only then is it unmounted and mounted again.</span><span class="de">ShareMount prüft beim Start, nach dem Aufwachen, bei jedem Netzwerkwechsel und einmal pro Minute. Eine Freigabe gilt erst als tot, wenn der Server nicht mehr antwortet oder das Lesen des Ordners hängt, zweimal hintereinander. Erst dann wird sie getrennt und neu verbunden.</span></p>
-        <div class="chips">
-          <span class="chip"><span class="en">Launch</span><span class="de">Start</span></span>
-          <span class="chip"><span class="en">After wake</span><span class="de">Nach dem Aufwachen</span></span>
-          <span class="chip"><span class="en">Network change</span><span class="de">Netzwerkwechsel</span></span>
-          <span class="chip"><span class="en">Every minute</span><span class="de">Jede Minute</span></span>
-        </div>
-      </div>
-      <div class="reveal d1">
-        <div class="facts rows">
-          <div class="fact"><b>445</b><span class="en">A quick check on the SMB port tells whether a server is reachable at all.</span><span class="de">Ein kurzer Test am SMB-Port zeigt, ob ein Server überhaupt erreichbar ist.</span></div>
-          <div class="fact"><b>10 s</b><span class="en">If reading a folder takes longer than that, twice in a row, the mount counts as hung.</span><span class="de">Dauert das Lesen eines Ordners länger, zweimal hintereinander, gilt die Freigabe als hängend.</span></div>
-          <div class="fact"><b>0</b><span class="en">passwords in ShareMount. It mounts through macOS, which takes them from the keychain.</span><span class="de">Passwörter in ShareMount. Es verbindet über macOS, das sie aus dem Schlüsselbund nimmt.</span></div>
-        </div>
-      </div>
     </div>
   </div>
 </section>
@@ -500,7 +447,7 @@ footer .fine { flex-basis: 100%; }
         <pre><code>git clone https://github.com/SH1FT-W/sharemount.git
 cd sharemount
 ./build.sh install</code></pre>
-        <p class="note"><span class="en">Updates arrive through the app itself: it checks GitHub releases after launch and every 6 hours, verifies the release signature (Ed25519), the checksum, the bundle and the code signature, and swaps the app in place. Versions count year.month.release: 26.10.4 is the fourth release of October 2026.</span><span class="de">Updates kommen über die App selbst: Sie fragt nach dem Start und alle 6 Stunden die GitHub-Releases ab, prüft Release-Signatur (Ed25519), Prüfsumme, Bundle und Code-Signatur und tauscht die App an Ort und Stelle. Versionen zählen Jahr.Monat.Release: 26.10.4 ist das vierte Release im Oktober 2026.</span></p>
+        <p class="note"><span class="en">Updates arrive through the app itself: it checks GitHub releases after launch and every 6 hours, verifies the release signature (Ed25519), the checksum, the bundle and the code signature, and swaps the app in place.</span><span class="de">Updates kommen über die App selbst: Sie fragt nach dem Start und alle 6 Stunden die GitHub-Releases ab, prüft Release-Signatur (Ed25519), Prüfsumme, Bundle und Code-Signatur und tauscht die App an Ort und Stelle.</span></p>
       </div>
     </div>
   </div>

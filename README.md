@@ -5,179 +5,49 @@
   <img src="docs/images/readme-title-light.webp" alt="ShareMount: Your shares. Always there. The menu with three connected shares, their free space and one server not reachable." />
 </picture>
 
-<p>A small menu bar app that keeps SMB shares mounted and brings them back after sleep, network changes and NAS restarts.<br/>
-With the passwords macOS already keeps for the Finder.</p>
-
 [![Version](https://img.shields.io/badge/dynamic/xml?url=https%3A%2F%2Fraw.githubusercontent.com%2FSH1FT-W%2Fsharemount%2Fmain%2FInfo.plist&query=%2F%2Fkey%5B.%3D%27CFBundleShortVersionString%27%5D%2Ffollowing-sibling%3A%3Astring%5B1%5D&label=version&style=flat-square&color=4A86F0&labelColor=0B0F17)](https://github.com/SH1FT-W/sharemount/releases/latest)
-[![macOS](https://img.shields.io/badge/macOS-14%2B-4A86F0?style=flat-square&labelColor=0B0F17&logo=apple&logoColor=white)](#install)
-[![Apple silicon](https://img.shields.io/badge/Apple%20silicon-arm64-4A86F0?style=flat-square&labelColor=0B0F17)](#install)
-[![License](https://img.shields.io/badge/license-MIT-4A86F0?style=flat-square&labelColor=0B0F17)](LICENSE)
+[![macOS](https://img.shields.io/badge/macOS-14%2B%20Apple%20silicon-4A86F0?style=flat-square&labelColor=0B0F17&logo=apple&logoColor=white)](#set-up)
+[![Download](https://img.shields.io/badge/download-ShareMount.zip-4A86F0?style=flat-square&labelColor=0B0F17)](https://github.com/SH1FT-W/sharemount/releases/latest)
 
-<p><a href="https://sh1ft-w.github.io/sharemount"><b>Website</b></a> &nbsp;·&nbsp; <a href="https://github.com/SH1FT-W/sharemount/releases/latest"><b>Download</b></a> &nbsp;·&nbsp; <a href="#new">New</a> &nbsp;·&nbsp; <a href="#features">Features</a> &nbsp;·&nbsp; <a href="#how">How it works</a> &nbsp;·&nbsp; <a href="#privacy">Privacy</a> &nbsp;·&nbsp; <a href="#install">Install</a> &nbsp;·&nbsp; <a href="https://github.com/SH1FT-W/sharemount/releases">Releases</a></p>
-
-<p><sub>The menu, styled like Wi-Fi and Bluetooth. English and German, following your Mac's preferred language. The screenshots use demo data.</sub></p>
+<a href="https://sh1ft-w.github.io/sharemount"><b>Website</b></a>&emsp;<a href="#install">Install</a>&emsp;<a href="#set-up">Set up</a>&emsp;<a href="#menu">Menu</a>&emsp;<a href="#networks">Networks</a>&emsp;<a href="CHANGELOG.md">Changelog</a>
 
 </div>
 
 <br/>
 
-<a id="new"></a>
-<sub><b>JUST ARRIVED</b></sub>
-## One Mac. Several users.
+ShareMount is a small menu bar app that **keeps your SMB shares mounted** and brings them back after sleep, network changes and NAS restarts. It uses the passwords macOS already keeps for the Finder.
 
-The latest releases make ShareMount at home on a shared Mac, give its buttons the Liquid Glass look and switch to calendar versions.
+macOS mounts a share once and then forgets about it: after a wake-up or a NAS reboot the share is gone or hangs, and scripts that expect `/Volumes/Media` find `/Volumes/Media-1`. ShareMount only handles SMB and never reads or stores your passwords itself.
 
-<!-- cards:new -->
-<table>
-<tr><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/account-multiple-outline-dark.svg"><img src="docs/images/icons/account-multiple-outline-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Only your own mounts</b> <code>2.5</code><br>With fast user switching, every signed-in user runs their own ShareMount and only sees the shares they mounted themselves. Other users' mounts are never shown as yours or disconnected.</td><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/update-dark.svg"><img src="docs/images/icons/update-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Updates from any account</b> <code>2.5</code><br>If the app belongs to another user, macOS asks for an administrator password and the app keeps its owner. After an update ShareMount restarts by itself for the others, mounts stay connected.</td></tr>
-<tr><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/calendar-outline-dark.svg"><img src="docs/images/icons/calendar-outline-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Calendar versions</b> <code>26.10.4</code><br>Year, month and the release of that month: 26.10.4 is the fourth release of October 2026. The jump from 2.5 is intended, the update check finds it as usual.</td><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/blur-dark.svg"><img src="docs/images/icons/blur-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Glass buttons</b> <code>2.4.2</code><br>On macOS 26 and 27 the install and notice buttons use the Liquid Glass style, and the menu rows follow the window corners.</td></tr>
-</table>
-<!-- /cards:new -->
+## What it does when
 
-If someone else already uses `/Volumes/Name`, yours is mounted at `Name-1` without a warning. While your session is in the background, checking and reconnecting go on; windows wait until you are back.
+| When | ShareMount |
+|:--|:--|
+| ShareMount starts, the Mac wakes, the network changes, once a minute | checks every share and mounts what is missing |
+| The server stops answering on port 445, or reading the folder hangs twice in a row | unmounts the dead share and mounts it again, with retries from 30 seconds to 15 minutes |
+| The Mac just woke up | unmounts nothing |
+| An old mount is still in the way | keeps the share at `/Volumes/<name>` instead of `<name>-1` |
+| The server rejects the login | stops retrying until you sign in again, so your NAS account is not locked |
+| You are away from home | waits as *Away, paused* for shares limited to your networks |
+| The server sleeps | sends Wake on LAN first, if you entered its MAC address |
 
-Every change, release by release, in the [releases](https://github.com/SH1FT-W/sharemount/releases).
-
-<br/>
-
-<a id="features"></a>
-<sub><b>FEATURES</b></sub>
-## Set it up once. Forget about it.
-
-macOS mounts a network share once and then forgets about it. After the Mac wakes up, switches Wi-Fi or the NAS reboots, the share is gone, or worse, it hangs and the Finder beachballs. Scripts and backups that expect `/Volumes/Media` suddenly find `/Volumes/Media-1`. ShareMount watches your shares in the background and quietly fixes what macOS leaves broken.
-
-<!-- cards:features -->
-<table>
-<tr><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/autorenew-dark.svg"><img src="docs/images/icons/autorenew-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Reconnects on its own</b><br>Checks at launch, after wake, on every network change and once a minute. Lost shares come back with a growing back-off from 30 seconds to 15 minutes.</td><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/timer-off-outline-dark.svg"><img src="docs/images/icons/timer-off-outline-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>No more beachballs</b><br>A share counts as dead only if the server stops answering on port 445 or reading the folder hangs twice in a row. Right after wake nothing is unmounted.</td></tr>
-<tr><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/key-outline-dark.svg"><img src="docs/images/icons/key-outline-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Uses the macOS keychain</b><br>Mounts through macOS (NetFS and NetAuth), which takes the password from the entry the Finder creates. The app never reads or stores your passwords.</td><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/folder-outline-dark.svg"><img src="docs/images/icons/folder-outline-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Clean paths</b><br>Keeps shares at /Volumes/<name> instead of <name>-1, so scripts and backups always find them, and tells you if a leftover folder is in the way.</td></tr>
-<tr><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/nas-dark.svg"><img src="docs/images/icons/nas-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Gentle with your NAS</b><br>If a server rejects the login, ShareMount stops retrying until you sign in again, so your NAS account is not locked out.</td><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/cloud-sync-outline-dark.svg"><img src="docs/images/icons/cloud-sync-outline-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>All your Macs</b><br>With iCloud Drive the list of shares (not the passwords) is shared between your Macs. Passwords stay in each Mac's keychain.</td></tr>
-<tr><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/menu-dark.svg"><img src="docs/images/icons/menu-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Native menu</b><br>Designed like the Wi-Fi and Bluetooth menus of macOS 26 and 27, with free space per share, connection time and one click to open, disconnect or reconnect.</td><td width="50%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/plus-circle-outline-dark.svg"><img src="docs/images/icons/plus-circle-outline-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Easy setup</b><br>Add shares by hand, pick a server found via Bonjour, paste an smb:// address, or adopt shares already mounted in the Finder.</td></tr>
-</table>
-<!-- /cards:features -->
-
-Plus **home-only shares** (a share can be limited to certain networks; elsewhere it waits as *Away, paused* instead of failing, see [Networks](#networks)), **Wake on LAN** (with the server's MAC address and a network rule set, ShareMount wakes a sleeping server before it connects), **several users on one Mac** (every signed-in user runs their own ShareMount and only sees their own mounts, see [New](#new)), **notifications** when a share is lost, a password is rejected or an update is available (at most once every 10 minutes per share), and **updates from GitHub Releases**, verified before anything is replaced (see [Updates](#updates)).
-
-<div align="center">
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/settings-shares-dark.png" />
-  <img src="docs/screenshots/settings-shares-light.png" width="600" alt="The settings window with a list of four shares, each with its smb address and an Edit button, plus Add, Import Connected and Show Config in Finder." />
-</picture>
-
-<p><sub>Settings: your shares, synced between your Macs through iCloud Drive if you like.</sub></p>
-</div>
-
-<br/>
-
-<a id="how"></a>
-<sub><b>HOW IT WORKS</b></sub>
-## Careful, not busy.
-
-ShareMount checks at launch, after wake, on every network change and once a minute. A share counts as dead only when the server stops answering or reading the folder hangs, twice in a row. Only then is it unmounted and mounted again.
-
-<!-- cards:how -->
-<table>
-<tr><td width="33%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/lan-connect-dark.svg"><img src="docs/images/icons/lan-connect-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>Port 445</b><br>A quick check on the SMB port tells whether a server is reachable at all.</td><td width="33%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/timer-sand-dark.svg"><img src="docs/images/icons/timer-sand-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>10 seconds</b><br>If reading a folder takes longer than that, twice in a row, the mount counts as hung.</td><td width="33%" valign="top"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/icons/lock-outline-dark.svg"><img src="docs/images/icons/lock-outline-light.svg" width="22" height="22" align="absmiddle" alt=""></picture> <b>0 passwords</b><br>ShareMount mounts through macOS, which takes them from the keychain.</td></tr>
-</table>
-<!-- /cards:how -->
-
-<details>
-<summary><b>Inside the source</b></summary>
-<br/>
-
-| File | What it does |
-|---|---|
-| `Sources/Engine.swift` | When to check: launch, wake, network changes, timer; back-off; dead-mount detection; path fixes |
-| `Sources/Mounter.swift` | Mount (NetFS, soft mount, no dialogs), probe, unmount, all with timeouts |
-| `Sources/Keychain.swift` | Where a password lives (macOS keychain via NetAuth, metadata only) |
-| `Sources/NetworkRules.swift` | Which network the Mac is on (router MAC from the neighbour table), network rules per share, Wake on LAN magic packet |
-| `Sources/Store.swift` | `shares.json` (iCloud Drive or Application Support), backup copy, log |
-| `Sources/Updater.swift` | GitHub releases, Ed25519 release signature, checksum and bundle checks, in-place swap, administrator swap when the app belongs to another user |
-| `Sources/Session.swift` | Fast user switching: keeps checking in the background, holds windows until the session is in front again |
-| `Sources/*View.swift`, `Components.swift` | Menu, settings and update window (SwiftUI) |
-| `Sources/Lang.swift` | Picks English or German; every visible text is written as `L("German", "English")` |
-
-</details>
-
-<br/>
-
-<a id="privacy"></a>
-<sub><b>PRIVACY</b></sub>
-## Private by design.
-
-- **No tracking.** No analytics, no telemetry, no accounts. There is nothing to sign up for.
-- **Only your servers.** ShareMount talks to your own SMB servers (a quick check on port 445, then the mount, and a Wake on LAN broadcast on your local network if you set a MAC address), browses for SMB servers via Bonjour on your local network while the share editor is open, and asks `api.github.com` for new releases. Nothing else.
-- **No location.** Networks are recognised by the MAC address of their router, which macOS already knows locally. ShareMount never asks for Location Services and never reads Wi-Fi names.
-- **Passwords** stay in the macOS keychain and are only used by macOS itself.
-- **Plain files.** Your list of shares (server, share name, user name) is stored as a readable `shares.json` in iCloud Drive › Software › ShareMount when iCloud Drive is on, otherwise in `~/Library/Application Support/ShareMount`. The log is at `~/Library/Logs/ShareMount.log`.
-
-<br/>
+**New in 26.10:** several users on one Mac (each sees only their own mounts, updates work from any account), Liquid Glass buttons on macOS 26 and 27, and servers with a plain IPv6 address. Every change is in the [changelog](CHANGELOG.md) and the [releases](https://github.com/SH1FT-W/sharemount/releases).
 
 <a id="install"></a>
-<sub><b>INSTALL</b></sub>
-## Ready in a minute.
+## Install
 
-ShareMount is open source and signed locally, not notarized by Apple (that needs a paid developer account), so macOS asks once before the first launch.
+[![Download ShareMount](https://img.shields.io/badge/Download-ShareMount.zip-4A86F0?style=for-the-badge&labelColor=0B0F17&logo=apple&logoColor=white)](https://github.com/SH1FT-W/sharemount/releases/latest)
 
-1. **Download** `ShareMount.zip` from the [latest release](https://github.com/SH1FT-W/sharemount/releases/latest) and unzip it.
-2. **Move** `ShareMount.app` to your **Applications** folder. Updates can only replace the app from there.
-3. **Allow the first launch.** Open **System Settings › Privacy & Security**, scroll down to *"ShareMount" was blocked* and click **Open Anyway**. Or in Terminal:
-   ```sh
-   xattr -dr com.apple.quarantine /Applications/ShareMount.app
-   ```
-   On macOS 14 you can also right-click the app and choose **Open**.
-4. **Add your shares.** A drive icon appears in the menu bar (there is no Dock icon). Open the menu and choose **Settings…**, then **Add**, or **Import Connected** to adopt shares you already mounted in the Finder.
+Unzip `ShareMount.zip` and move `ShareMount.app` to **Applications** (updates can only replace it there). ShareMount is not notarized by Apple (that needs a paid developer account), so macOS blocks the first launch once: open **System Settings > Privacy & Security**, scroll to *"ShareMount" was blocked* and click **Open Anyway**, or run
 
-From then on ShareMount takes care of itself, updates included. A few things for the first run:
+```sh
+xattr -dr com.apple.quarantine /Applications/ShareMount.app
+```
 
-- If macOS has no password for a share yet, click the share (or **Sign In…**). The standard macOS login window appears; tick **Remember this password in my keychain**. From then on ShareMount connects without asking.
-- Allow notifications and, if asked, access to the local network.
-- Turn on **Open at Login** in the menu so it is there after every restart.
+On macOS 14 you can also right-click the app and choose **Open**. After that ShareMount updates itself.
 
-### What you need
-
-- macOS 14 Sonoma or later (built and tested on macOS 27)
-- A Mac with Apple silicon. Intel Macs are not supported.
-- Local network access and notifications
-- iCloud Drive, if you want the list of shares synced between Macs
-
-English and German interface, following your Mac's preferred language. Built with Apple frameworks only, no third-party code.
-
-<a id="networks"></a>
-### Networks and Wake on LAN
-
-**Only on certain networks.** In a share's settings, turn on *Only on certain networks* and click *Add Current Network* while you are at home (or in the office). From then on ShareMount connects that share automatically only there. Anywhere else the share shows *Away, paused*: no attempts, no errors, no notifications. Clicking the share in the menu still connects it, for example over a VPN. Networks you added to one share can be picked for the others under *Known*.
-
-ShareMount recognises a network by the MAC address of its router (the default gateway), the same on Wi-Fi and Ethernet. Reading the Wi-Fi name (SSID) would need Location Services since macOS 14, and because ShareMount is only ad-hoc signed, macOS would ask again after every update. The router address needs no permission. Limits: over a full-tunnel VPN or on an IPv6-only network there is no router address to compare, so the share counts as away; a new router means adding the network again.
-
-**Wake on LAN.** Enter the server's MAC address in the share's settings (it applies to all shares on that server). If the server does not answer on port 445, ShareMount sends a magic packet (UDP broadcast, port 9), waits up to 60 seconds for the server to come up and then connects as usual. If it stays asleep, the next packet goes out after 5 minutes at the earliest, or right away when you click the share. The server has to support Wake on LAN and be on the same local network. Wake on LAN needs a network rule: ShareMount only sends the packet while the Mac is on one of the share's networks (see above), so a café or hotel network never gets your NAS's wake-up call. Without networks set no packet goes out, and the share editor says so next to the MAC field.
-
-Both settings are stored in `shares.json`. Update ShareMount on all your Macs before you use them: older versions ignore and, when they save the list, drop these settings.
-
-<a id="updates"></a>
-### Updates
-
-ShareMount checks the [GitHub releases](https://github.com/SH1FT-W/sharemount/releases) of this repository shortly after launch and every 6 hours (you can turn that off). When a new version is out, a small window offers *Install now*, *Later* or *Skip this version*.
-
-<div align="center">
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/update-dark.png" />
-  <img src="docs/screenshots/update-light.png" width="600" alt="The update window: a new version of ShareMount is available, with what is new and the buttons Skip This Version, Remind Me Later and Install Now." />
-</picture>
-</div>
-
-Before the app is replaced, ShareMount checks that the download carries a valid Ed25519 signature from the maintainer's release key (the public half is built into the app), that it matches the published SHA-256 checksum, that it is ShareMount (bundle identifier) with exactly the announced version, and that its code signature is intact. The new version then replaces the old one in place; if that fails, the old version is put back.
-
-The private key never leaves the maintainer's Mac, so from the first signed version on, even someone who takes over the GitHub account or uploads a foreign release cannot get an update installed. Versions up to 26.10.7 only check the checksum; update them once to be covered. ShareMount itself is ad-hoc signed; the release signature is what ties an update to its maintainer.
-
-No GitHub account or token is needed.
-
-**Several users on one Mac.** Updates work from any account. If the app in Applications belongs to another user, macOS asks for an administrator password; the app keeps its owner. When one user installs an update, ShareMount restarts by itself for the other signed-in users, and their mounts stay connected. The update window never opens while your session is in the background; it waits until you switch back.
-
-### Versions
-
-Since 26.10.4, ShareMount uses calendar versions **`YY.M.N`**: two-digit year, month without a leading zero, and the running number of the release within that month. `26.10.4` is the fourth release of October 2026; the next month starts again at `.1`. Every release, feature or fix, gets the next number. The jump from 2.5 to 26.10.4 is intended: the update check compares the numbers part by part, so any calendar version is newer than any `2.x` and the update is found as usual. How a release is made is described in [RELEASING.md](RELEASING.md).
-
-### Build from source
+<details>
+<summary>Build from source</summary>
 
 No Xcode needed, the Command Line Tools are enough (`xcode-select --install`).
 
@@ -186,54 +56,117 @@ git clone https://github.com/SH1FT-W/sharemount.git
 cd sharemount
 ./build.sh            # builds build/ShareMount.app (arm64, ad-hoc signed)
 ./build.sh install    # copies it to /Applications and launches it
-./build.sh test       # runs the self tests
-./build.sh snapshot   # renders the screenshots in docs/screenshots with demo data
-./build.sh release next "What's new"   # maintainers: next calendar version, build, tag, GitHub release
 ```
 
-`build.sh` prefers a macOS 26 SDK from the Command Line Tools (the SDK 27 there lacks the SwiftUI macro plugin) and falls back to the default SDK. Override with `SDK=/path/to/sdk ./build.sh`. Only Apple frameworks are used, no third-party code.
+</details>
 
-<br/>
+<a id="set-up"></a>
+## Set up
 
-<a id="faq"></a>
-<sub><b>FAQ</b></sub>
-## Questions that come up.
+You need macOS 14 Sonoma or later (built and tested on macOS 27) on a Mac with Apple silicon. Intel Macs are not supported.
 
-**A share shows "Server not reachable" although the NAS is on.**
-Check *System Settings › Privacy & Security › Local Network* and make sure ShareMount is allowed. VPNs and firewalls that block port 445 have the same effect.
+1. **Open the menu.** A drive icon appears in the menu bar (there is no Dock icon). Allow notifications and, if asked, access to the local network.
+2. **Add your shares.** Choose **Settings… > Add** and type the share, pick a server found via Bonjour or paste an `smb://` address. **Import Connected** adopts shares you already mounted in the Finder.
+3. **Sign in once.** If macOS has no password for a share yet, click it (or **Sign In…**), enter the password in the standard macOS window and tick **Remember this password in my keychain**.
+4. **Turn on Open at Login** in the menu, so ShareMount is there after every restart.
 
-**The login is rejected (key icon).**
-ShareMount deliberately stops retrying so your NAS does not lock the account. Click the share, enter the correct password in the macOS window and tick *Remember this password in my keychain*.
+With iCloud Drive on, the list of shares (not the passwords) is shared between your Macs.
 
-**My share is mounted at `/Volumes/Name-1`.**
-That happens when macOS had not finished removing the old mount. ShareMount fixes it right after its own mounts. For an existing mount it shows *Fix Path* in the menu, because a running app might have files open there. If an empty folder blocks the path, the menu shows the `sudo rmdir` command to remove it.
+<a id="menu"></a>
+## Menu
 
-**Another user on this Mac has the same share mounted.**
-Each user runs their own ShareMount and only sees their own mounts. If the other user already holds `/Volumes/Name`, yours is mounted at `Name-1` on purpose, without a warning or a path fix.
+Styled like the Wi-Fi and Bluetooth menus of macOS 26 and 27.
 
-**A share says "Away, paused" although I am at home.**
-The router was not recognised as one of the share's networks, for example after a new router or while a VPN routes all traffic. Open the share's settings and click *Add Current Network* again. The log shows which router ShareMount sees.
+| In the menu | Shows or does |
+|:--|:--|
+| Share row | Free space and connection time. A click opens it in the Finder, connects it or asks you to sign in. |
+| *Server not reachable* | The server does not answer on port 445. ShareMount keeps trying. |
+| Key icon | The login was rejected. Click the share and sign in again. |
+| *Away, paused* | The Mac is not on one of the share's networks. A click still connects, for example over a VPN. |
+| *Fix Path* | The share sits at `Name-1`. Briefly disconnects and mounts it at `Name`. |
+| Reconnect All, Disconnect All | For every share at once. |
+| Settings… | Tabs Shares (Add, Edit, Import Connected), General, Updates and Log. |
 
-**Does it work with Time Machine shares?**
-Yes. ShareMount ignores the hidden mounts Time Machine creates under `/Volumes/.timemachine`.
+Notifications come when a share is lost, a password is rejected or an update is out, at most once every 10 minutes per share. A click opens the right place in Settings.
 
-**How do I uninstall it?**
-Quit ShareMount, delete it from Applications, and optionally remove the `ShareMount` folder in iCloud Drive › Software or `~/Library/Application Support`, and `~/Library/Logs/ShareMount.log`. The keychain entries belong to macOS and the Finder and stay where they are.
+<a id="networks"></a>
+## Networks and Wake on LAN
 
-**Which languages are supported?**
-English and German. The app picks German when your Mac's first preferred language is German and English otherwise. To try the other language, start it from Terminal with `SHAREMOUNT_LANG=en` or `SHAREMOUNT_LANG=de`, for example `SHAREMOUNT_LANG=en /Applications/ShareMount.app/Contents/MacOS/ShareMount`.
+**Only on certain networks.** In a share's settings, turn on *Only on certain networks* and click *Add Current Network* at home or in the office. Elsewhere the share waits as *Away, paused*: no attempts, no errors, no notifications. Networks you added to one share can be picked for the others under *Known*.
 
-<br/>
+**Wake on LAN.** Enter the server's MAC address in the share's settings (it applies to every share on that server). If the server does not answer, ShareMount sends a magic packet, waits up to 60 seconds and then connects as usual; the next packet goes out after 5 minutes at the earliest, or right away when you click the share. The packet only goes out while the Mac is on one of the share's networks, so without networks set none is sent (the editor says so next to the MAC field).
 
-<sub><b>OPEN SOURCE</b></sub>
-## A small, independent project.
+> [!NOTE]
+> Both settings are stored in `shares.json`. Older ShareMount versions drop them when they save the list, so update every Mac that shares the list through iCloud Drive first.
 
-ShareMount is a small, independent project under the [MIT license](LICENSE). Found a bug or missing something? [Open an issue](https://github.com/SH1FT-W/sharemount/issues) on GitHub.
+## Your data
 
-ShareMount is not affiliated with Apple.
+- **Only your servers.** ShareMount talks to your SMB servers (port 445, the mount, Wake on LAN on your local network), browses Bonjour while the share editor is open and asks `api.github.com` for new releases. No analytics, no telemetry, no accounts.
+- **Passwords** stay in the macOS keychain. ShareMount mounts through macOS (NetFS and NetAuth), which takes them from the entry the Finder creates.
+- **No location.** Networks are recognised by the MAC address of their router, which macOS already knows. ShareMount never asks for Location Services and never reads Wi-Fi names.
 
-<br/>
+## Good to know
 
-<div align="center">
-  <sub>A <a href="https://sh1ft-w.github.io"><b>SH1FT-W</b></a> project &nbsp;·&nbsp; <a href="https://sh1ft-w.github.io/casora">Casora</a> &nbsp;·&nbsp; <a href="https://sh1ft-w.github.io/flode">FLODE</a> &nbsp;·&nbsp; <a href="https://sh1ft-w.github.io/pulse">Pulse</a> &nbsp;·&nbsp; <a href="https://sh1ft-w.github.io/evenlight">Evenlight</a> &nbsp;·&nbsp; <a href="https://sh1ft-w.github.io/agentbar">AgentBar</a> &nbsp;·&nbsp; Built with <a href="https://claude.ai">Claude</a></sub>
-</div>
+- Each signed-in user runs their own ShareMount. If another user already holds `/Volumes/Name`, yours is mounted at `Name-1` on purpose, without a warning or a path fix.
+- Over a full-tunnel VPN or on an IPv6-only network there is no router address to compare, so a share with network rules counts as away. A new router means adding the network again.
+- Time Machine's hidden mounts under `/Volumes/.timemachine` are ignored.
+- Updates are only installed with a valid Ed25519 signature from the maintainer's release key. Versions up to 26.10.7 only check the checksum; update them once to be covered.
+
+<details>
+<summary>Troubleshooting</summary>
+
+- **"Server not reachable" although the NAS is on.** Allow ShareMount under **System Settings > Privacy & Security > Local Network**. VPNs and firewalls that block port 445 have the same effect.
+- **The login is rejected (key icon).** Click the share, enter the correct password in the macOS window and tick *Remember this password in my keychain*.
+- **The share is at `/Volumes/Name-1`.** macOS had not finished removing the old mount. ShareMount fixes its own mounts right away; for an existing mount it offers *Fix Path*, because a running app might have files open there. If an empty folder blocks the path, the menu shows the `sudo rmdir` command.
+- **"Away, paused" at home.** The router was not recognised, for example after a new router or while a VPN routes all traffic. Click *Add Current Network* again; the log shows which router ShareMount sees.
+- **Log:** `~/Library/Logs/ShareMount.log`.
+
+When you open an [issue](https://github.com/SH1FT-W/sharemount/issues), the log helps.
+
+</details>
+
+<details>
+<summary>Remove</summary>
+
+1. Quit ShareMount and delete it from Applications.
+2. Optionally remove the `ShareMount` folder in iCloud Drive > Software or in `~/Library/Application Support`, and `~/Library/Logs/ShareMount.log`.
+
+The keychain entries belong to macOS and the Finder and stay where they are.
+
+</details>
+
+<details>
+<summary>How it works</summary>
+
+| File | What it does |
+|:--|:--|
+| `Sources/Engine.swift` | When to check (launch, wake, network changes, timer), back-off, dead-mount detection, path fixes |
+| `Sources/Mounter.swift` | Mount (NetFS, soft mount, no dialogs), probe, unmount, all with timeouts |
+| `Sources/Keychain.swift` | Where a password lives (macOS keychain via NetAuth, metadata only) |
+| `Sources/NetworkRules.swift` | Which network the Mac is on (router MAC from the neighbour table), network rules, Wake on LAN |
+| `Sources/Store.swift` | `shares.json` (iCloud Drive or Application Support), backup copy, log |
+| `Sources/Updater.swift` | GitHub releases every 6 hours, Ed25519 signature, SHA-256 checksum, bundle ID, version and code signature checks, in-place swap with rollback |
+| `Sources/Session.swift` | Fast user switching: keeps checking in the background, holds windows until the session is in front |
+
+A share counts as hung when reading its folder takes longer than 10 seconds, twice in a row. Wake on LAN is a UDP broadcast on port 9. Wi-Fi names would need Location Services since macOS 14, and because ShareMount is only ad-hoc signed, macOS would ask again after every update; the router address needs no permission. The private release key never leaves the maintainer's Mac, so even someone who takes over the GitHub account cannot get an update installed.
+
+</details>
+
+<details>
+<summary>Development</summary>
+
+```sh
+./build.sh test       # runs the self tests
+./build.sh snapshot   # renders the screenshots in docs/screenshots with demo data
+SHAREMOUNT_LANG=en /Applications/ShareMount.app/Contents/MacOS/ShareMount   # or =de
+```
+
+`build.sh` prefers a macOS 26 SDK from the Command Line Tools (the SDK 27 there lacks the SwiftUI macro plugin); override with `SDK=/path/to/sdk ./build.sh`. Every visible text is written as `L("German", "English")`; the app follows your Mac's first preferred language. Only Apple frameworks, no third-party code. Versions are `YY.M.N` (`26.10.4` is the fourth release of October 2026, newer than any `2.x`); releasing is described in [RELEASING.md](RELEASING.md).
+
+</details>
+
+## License
+
+[MIT](LICENSE). Found a bug or missing something? [Open an issue](https://github.com/SH1FT-W/sharemount/issues).
+
+<sub>ShareMount is an independent project, not affiliated with Apple. The screenshots use demo data.</sub>
