@@ -77,6 +77,13 @@ With iCloud Drive on, the list of shares (not the passwords) is shared between y
 
 Styled like the Wi-Fi and Bluetooth menus of macOS 26 and 27.
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/readme-menu-settings-dark.webp" />
+    <img src="docs/screenshots/readme-menu-settings-light.webp" alt="The ShareMount menu with three connected shares, their free space and one server not reachable, next to the Shares settings with Add, Import Connected and the list of shares." />
+  </picture>
+</p>
+
 | In the menu | Shows or does |
 |:--|:--|
 | Share row | Free space and connection time. A click opens it in the Finder, connects it or asks you to sign in. |
