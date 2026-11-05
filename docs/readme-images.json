@@ -34,7 +34,8 @@
       "left": 760,
       "top": 62,
       "flat": true
-    }
+    },
+    "layout": "center"
   },
   "colors": {
     "light": {
