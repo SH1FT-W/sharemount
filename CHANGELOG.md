@@ -3,7 +3,7 @@
 All notable changes to ShareMount. Every release is also listed with its notes on the
 [releases page](https://github.com/SH1FT-W/sharemount/releases).
 
-## Unreleased
+## 26.11.1 (2026-11-05)
 
 ### Added
 - **Only on certain networks.** A share can be limited to a list of networks (for example "Home network").
@@ -16,6 +16,12 @@ All notable changes to ShareMount. Every release is also listed with its notes o
   (a click on the share sends one right away). Needs a network rule: the packet only goes out while the Mac
   is on one of the share's networks; without networks set, the share editor shows a hint next to the MAC field.
 - Self tests for the network rules, the neighbour table parser and the magic packet.
+
+### Changed
+- **Signed updates.** Releases are signed with Ed25519, and the update button installs a release only if its
+  signature matches the key built into the app. This release is the first one signed; it still installs from
+  older versions as usual.
+- Release tags and titles are the bare version, without "v".
 
 ### Notes
 - `shares.json` gains the optional fields `networks` and `wakeMAC`. Older versions ignore them, and drop them

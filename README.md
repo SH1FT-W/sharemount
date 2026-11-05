@@ -31,7 +31,7 @@ macOS mounts a share once and then forgets about it: after a wake-up or a NAS re
 | You are away from home | waits as *Away, paused* for shares limited to your networks |
 | The server sleeps | sends Wake on LAN first, if you entered its MAC address |
 
-**New in 26.10:** several users on one Mac (each sees only their own mounts, updates work from any account), Liquid Glass buttons on macOS 26 and 27, and servers with a plain IPv6 address. Every change is in the [changelog](CHANGELOG.md) and the [releases](https://github.com/SH1FT-W/sharemount/releases).
+**New in 26.11:** shares that connect only on the networks you choose, Wake on LAN for servers that sleep, and signed updates: the app installs an update only if its signature matches. Every change is in the [changelog](CHANGELOG.md) and the [releases](https://github.com/SH1FT-W/sharemount/releases).
 
 <a id="install"></a>
 ## Install
