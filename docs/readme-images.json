@@ -1,5 +1,5 @@
 {
-  "$comment": "Content of the README pictures. Render with sh1ft-w.github.io/theme/v1/readme-images (node render.mjs <this repo>).",
+  "$comment": "Content of the README title. Render with sh1ft-w.github.io/theme/v2/readme-images (node render.mjs <this repo>): banner 1280 x 440 light and dark, social preview 1280 x 640. Used fields: title.name, title.line, title.lanes, title.logo, colors.*.bg/ink/ink2, colors.light.accent. The other fields are from the v1 title and no longer read.",
   "title": {
     "name": "ShareMount",
     "eyebrow": "For the Mac menu bar",
@@ -35,7 +35,13 @@
       "top": 62,
       "flat": true
     },
-    "layout": "center"
+    "layout": "center",
+    "line": "Network shares that reconnect by themselves.",
+    "lanes": [
+      "Menu bar app",
+      "Keychain",
+      "macOS 14 or newer"
+    ]
   },
   "colors": {
     "light": {

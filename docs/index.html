@@ -13,46 +13,42 @@
 <meta property="og:description" content="Keeps your SMB shares mounted. Reconnects after sleep, network changes and NAS restarts, right from the menu bar.">
 <meta property="og:image" content="https://sh1ft-w.github.io/sharemount/images/readme-title-social.png">
 <link rel="icon" type="image/png" href="icon.png">
-<!-- Shared SH1FT-W design (tokens, glass navigation, light/dark, DE/EN, reveal) -->
-<link rel="stylesheet" href="https://sh1ft-w.github.io/theme/v1/theme.css">
-<script src="https://sh1ft-w.github.io/theme/v1/theme.js"></script>
+<!-- Shared SH1FT-W design, version 2 (tokens, Archivo, navigation, light/dark, DE/EN, the lanes) -->
+<link rel="stylesheet" href="https://sh1ft-w.github.io/theme/v2/theme.css">
+<script src="https://sh1ft-w.github.io/theme/v2/theme.js"></script>
 <style>
 /* ShareMount-Palette: das Blau des App-Icons; Dunkel folgt dem System oder dem Schalter oben rechts */
 :root {
   --accent: var(--blue);
   --bg: #f3f6fc; --bg-2: #e9eef8; --card: #ffffff; --card-2: #eef2fa;
   --ink: #141a26; --ink-2: #5b6474; --ink-3: rgba(20,26,38,0.5);
-  --blue: #3b7ced; --blue-fill: #4a86f0; --blue-tint: rgba(74,134,240,0.12); --blue-glow: rgba(74,134,240,0.32); --on-blue: #ffffff;
+  --blue: #3b7ced; --blue-fill: #4a86f0; --blue-tint: rgba(74,134,240,0.12); --on-blue: #ffffff;
   --teal: #1f9d8c; --teal-tint: rgba(31,157,140,0.13);
   --line: rgba(60,80,120,0.14); --chip: rgba(60,90,150,0.08);
   --glass: rgba(255,255,255,0.68); --glass-line: rgba(255,255,255,0.7);
   --shadow: 0 1px 2px rgba(30,50,90,0.05), 0 12px 32px -14px rgba(30,50,90,0.22);
   --shadow-lg: 0 2px 6px rgba(30,50,90,0.05), 0 48px 100px -36px rgba(20,40,90,0.4);
   --radius: 28px; --radius-lg: 36px; --gutter: clamp(16px, 5vw, 48px); --max: 1180px;
-  --blob-1: rgba(74,134,240,0.26); --blob-2: rgba(31,157,140,0.16); --blob-3: rgba(170,200,255,0.5);
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0b0f17; --bg-2: #0e131c; --card: #151b27; --card-2: #1b2230;
   --ink: #eef2f8; --ink-2: rgba(200,210,228,0.86); --ink-3: rgba(200,210,228,0.55);
-  --blue: #7aa8ff; --blue-fill: #4a86f0; --blue-tint: rgba(122,168,255,0.14); --blue-glow: rgba(74,134,240,0.3); --on-blue: #ffffff;
+  --blue: #7aa8ff; --blue-fill: #4a86f0; --blue-tint: rgba(122,168,255,0.14); --on-blue: #ffffff;
   --teal: #5ecdbd; --teal-tint: rgba(94,205,189,0.14);
   --line: rgba(200,210,228,0.12); --chip: rgba(200,210,228,0.08);
   --glass: rgba(21,27,39,0.66); --glass-line: rgba(255,255,255,0.08);
   --shadow: 0 14px 34px -16px rgba(0,0,0,0.6); --shadow-lg: 0 48px 100px -36px rgba(0,0,0,0.8);
-  --blob-1: rgba(74,134,240,0.22); --blob-2: rgba(94,205,189,0.12); --blob-3: rgba(40,70,140,0.3);
 } }
 :root[data-theme="dark"] {
   --bg: #0b0f17; --bg-2: #0e131c; --card: #151b27; --card-2: #1b2230;
   --ink: #eef2f8; --ink-2: rgba(200,210,228,0.86); --ink-3: rgba(200,210,228,0.55);
-  --blue: #7aa8ff; --blue-fill: #4a86f0; --blue-tint: rgba(122,168,255,0.14); --blue-glow: rgba(74,134,240,0.3); --on-blue: #ffffff;
+  --blue: #7aa8ff; --blue-fill: #4a86f0; --blue-tint: rgba(122,168,255,0.14); --on-blue: #ffffff;
   --teal: #5ecdbd; --teal-tint: rgba(94,205,189,0.14);
   --line: rgba(200,210,228,0.12); --chip: rgba(200,210,228,0.08);
   --glass: rgba(21,27,39,0.66); --glass-line: rgba(255,255,255,0.08);
   --shadow: 0 14px 34px -16px rgba(0,0,0,0.6); --shadow-lg: 0 48px 100px -36px rgba(0,0,0,0.8);
-  --blob-1: rgba(74,134,240,0.22); --blob-2: rgba(94,205,189,0.12); --blob-3: rgba(40,70,140,0.3);
 }
 
-body { letter-spacing: -0.012em; }
 a { color: var(--blue); text-decoration: none; }
 a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .wrap { max-width: var(--max); margin: 0 auto; padding: 0 var(--gutter); }
@@ -70,19 +66,17 @@ code { font: 500 0.88em/1.4 ui-monospace, "SF Mono", Menlo, monospace; letter-sp
   display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 24px; border-radius: 999px;
   font-family: inherit; font-size: 15px; font-weight: 600; line-height: 1; letter-spacing: -0.005em;
   background: var(--blue-fill); color: var(--on-blue); border: 0; cursor: pointer;
-  box-shadow: 0 12px 28px -12px var(--blue-glow); transition: transform .2s ease, filter .2s ease, box-shadow .2s ease;
+  transition: transform .2s ease, filter .2s ease;
 }
-.btn:hover { text-decoration: none; filter: brightness(1.05); transform: translateY(-1px); box-shadow: 0 16px 32px -12px var(--blue-glow); }
+.btn:hover { text-decoration: none; filter: brightness(1.05); transform: translateY(-1px); }
 .btn.ghost { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
 .btn.small { height: 36px; padding: 0 16px; font-size: 14px; }
 .btn svg { width: 16px; height: 16px; }
 
 /* Schrift */
-.eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--blue); margin: 0 0 18px; }
-.eyebrow::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--blue); box-shadow: 0 0 0 4px var(--blue-tint); }
-h1, h2, h3 { margin: 0; color: var(--ink); font-weight: 800; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, system-ui, sans-serif; }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--blue); margin: 0 0 18px; }
+h1, h2, h3 { margin: 0; color: var(--ink); font-weight: 800; font-family: var(--display); }
 h1 { font-size: clamp(48px, 8.4vw, 104px); line-height: 0.98; letter-spacing: -0.045em; }
-h1 em { font-style: normal; color: var(--blue); }
 h2 { font-size: clamp(36px, 5.4vw, 64px); line-height: 1.02; letter-spacing: -0.04em; }
 h3 { font-size: 21px; line-height: 1.2; letter-spacing: -0.02em; font-weight: 700; }
 .lead { font-size: clamp(19px, 2.1vw, 23px); line-height: 1.45; color: var(--ink-2); letter-spacing: -0.012em; margin: 24px 0 0; }
@@ -100,16 +94,7 @@ section.tint { background: var(--bg-2); }
 .shot img { width: 100%; }
 .cap { margin-top: 18px; font-size: 15px; color: var(--ink-3); text-align: center; }
 
-/* Hero mit weichem Farbschleier */
-.hero { padding: clamp(64px, 10vw, 120px) 0 clamp(64px, 9vw, 112px); text-align: center; }
-.hero .glow { position: absolute; inset: -30% -10% auto; height: 90%; z-index: 0; pointer-events: none;
-  background:
-    radial-gradient(42% 38% at 22% 28%, var(--blob-1), transparent 70%),
-    radial-gradient(36% 34% at 78% 22%, var(--blob-2), transparent 70%),
-    radial-gradient(50% 40% at 50% 70%, var(--blob-3), transparent 70%);
-  filter: blur(48px); opacity: .7; }
-.hero .wrap { position: relative; z-index: 1; }
-.hero .appicon { width: 112px; height: 112px; margin: 0 auto 24px; filter: drop-shadow(0 18px 30px var(--blue-glow)); }
+/* Hero */
 .hero .lead { max-width: 640px; margin-left: auto; margin-right: auto; }
 .cta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 36px; }
 .meta { margin-top: 22px; font-size: 14px; color: var(--ink-3); display: flex; flex-wrap: wrap; gap: 8px 14px; justify-content: center; align-items: center; }
@@ -117,24 +102,23 @@ section.tint { background: var(--bg-2); }
 .pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); display: inline-block; }
 
 /* Bühne: Menü und Update-Fenster nebeneinander */
-.stage { display: flex; justify-content: center; align-items: flex-start; gap: 40px; margin-top: clamp(48px, 7vw, 80px); flex-wrap: wrap; }
+.stage { display: flex; justify-content: flex-start; align-items: flex-start; gap: 40px; margin-top: clamp(48px, 7vw, 80px); flex-wrap: wrap; }
 .stage figure { margin: 0; }
 .stage .menu { width: 330px; max-width: 100%; }
 .stage .menu .shot { border-radius: 18px; }
 .stage .side { width: 500px; max-width: 100%; padding-top: 64px; }
 .stage .side .shot { border-radius: 16px; }
-.hero .stage .shot { box-shadow: 0 2px 6px rgba(30,50,90,0.05), 0 60px 120px -50px var(--blue-glow), var(--shadow-lg); }
 
 /* Neu dabei: Bento */
 .bento { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
 .b { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; position: relative; min-width: 0; }
 .b .txt { padding: 26px 28px 28px; }
-.b .txt .k { display: inline-block; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--teal); background: var(--teal-tint); padding: 4px 10px; border-radius: 999px; margin-bottom: 14px; }
+.b .txt .k { display: inline-block; font-size: 12px; font-weight: 600; color: var(--teal); background: var(--teal-tint); padding: 4px 10px; border-radius: 999px; margin-bottom: 14px; }
 .b h3 { margin-bottom: 8px; }
 .b p { color: var(--ink-2); font-size: 16px; }
 .b .pic { background: var(--card-2); padding: 22px; display: flex; justify-content: center; align-items: center; flex: 1; }
-.b .pic img { border-radius: 14px; box-shadow: 0 10px 30px -12px rgba(0,0,0,.28); }
-.b .big { display: block; font-size: clamp(40px, 5vw, 56px); line-height: 1; font-weight: 800; letter-spacing: -0.045em; color: var(--blue); margin: 10px 0 14px; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, system-ui, sans-serif; }
+.b .pic img { border-radius: 14px; }
+.b .big { display: block; font-size: clamp(40px, 5vw, 56px); line-height: 1; font-weight: 800; letter-spacing: -0.045em; color: var(--blue); margin: 10px 0 14px; font-family: var(--display); }
 .b .list { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 10px; }
 .b .list li { display: flex; gap: 12px; align-items: flex-start; color: var(--ink-2); font-size: 15px; line-height: 1.45; }
 .b .list li::before { content: ""; flex: none; width: 18px; height: 18px; margin-top: 2px; border-radius: 50%; background: var(--blue-tint);
@@ -143,11 +127,11 @@ section.tint { background: var(--bg-2); }
 
 /* Funktionen: Kacheln mit Symbol */
 .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.whenmap { max-width: 920px; margin: 0 auto clamp(40px, 5vw, 64px); background: var(--card); border-radius: 22px; padding: 8px 28px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+.whenmap { max-width: 920px; margin: 0 0 clamp(40px, 5vw, 64px); background: var(--card); border-radius: 22px; padding: 8px 28px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
 .whenmap .row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 14px 0; border-top: 1px solid var(--line); font-size: 16px; line-height: 1.45; color: var(--ink-2); }
 .whenmap .row:first-child { border-top: 0; }
 .whenmap .row > span:first-child { color: var(--ink); }
-.whenmap .row.th { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); }
+.whenmap .row.th { font-size: 13px; font-weight: 600; color: var(--ink-3); }
 .whenmap .row.th > span:first-child { color: var(--ink-3); }
 @media (max-width: 640px) { .whenmap .row { grid-template-columns: 1fr; gap: 4px; } .whenmap { padding: 4px 18px; } }
 .tile { background: var(--card); border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow); }
@@ -156,7 +140,7 @@ section.tint { background: var(--bg-2); }
 .tile .ico { width: 48px; height: 48px; border-radius: 16px; background: var(--blue-tint); color: var(--blue); display: grid; place-items: center; margin-bottom: 18px; }
 .tile .ico svg { width: 24px; height: 24px; }
 .wide { margin-top: 20px; }
-.wide .shot { max-width: 760px; margin: 0 auto; }
+.wide .shot { max-width: 760px; }
 
 /* Zweispaltig und Zahlen */
 .split { display: grid; grid-template-columns: 1fr 1.25fr; gap: clamp(40px, 6vw, 88px); align-items: center; }
@@ -164,7 +148,7 @@ section.tint { background: var(--bg-2); }
 .split.flip > :first-child { order: 2; }
 .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: clamp(48px, 6vw, 80px); }
 .fact { background: var(--card); border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow); }
-.fact b { display: block; font-size: clamp(40px, 5vw, 56px); line-height: 1; font-weight: 800; letter-spacing: -0.045em; color: var(--blue); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, system-ui, sans-serif; }
+.fact b { display: block; font-size: clamp(40px, 5vw, 56px); line-height: 1; font-weight: 800; letter-spacing: -0.045em; color: var(--blue); font-family: var(--display); }
 .fact span { display: block; margin-top: 12px; color: var(--ink-2); font-size: 16px; line-height: 1.45; }
 .facts.rows { grid-template-columns: 1fr; gap: 12px; margin-top: 0; }
 .facts.rows .fact { display: flex; align-items: center; gap: 22px; padding: 22px 26px; }
@@ -189,7 +173,7 @@ section.tint { background: var(--bg-2); }
 .req li { display: flex; gap: 14px; align-items: baseline; padding: 15px 0; border-top: 1px solid var(--line); font-size: 16px; }
 .req li:first-child { border-top: 0; padding-top: 6px; }
 .req .name { color: var(--ink); font-weight: 600; flex: 1; }
-.tag { flex: none; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; background: var(--blue-tint); color: var(--blue); }
+.tag { flex: none; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--blue-tint); color: var(--blue); }
 .tag.opt { background: var(--chip); color: var(--ink-3); }
 .note { margin-top: 20px; font-size: 14px; color: var(--ink-3); }
 .manual { grid-column: 1 / -1; }
@@ -223,10 +207,9 @@ footer .fine { flex-basis: 100%; }
 }
 @media (max-width: 640px) {
   body { font-size: 16px; }
-  :root { --radius: 24px; --radius-lg: 28px; }
   .nav { gap: 10px; }
-  .nav .btn { margin-left: auto; }
-  .hero .appicon { width: 92px; height: 92px; }
+  .nav .iconbtn { margin-left: auto; }
+  .nav .btn { display: none; }
   .stage { gap: 28px; }
   .facts { grid-template-columns: 1fr; gap: 12px; }
   .fact { padding: 22px 24px; display: flex; align-items: center; gap: 18px; }
@@ -237,6 +220,44 @@ footer .fine { flex-basis: 100%; }
   .steps li { padding-left: 48px; }
   .panel { padding: 26px 22px; }
 }
+
+/* ---- theme v2 ---- */
+:root { --font: "Archivo", -apple-system, BlinkMacSystemFont, system-ui, sans-serif; --display: var(--font); --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --accent-ink: var(--blue); --on-accent: var(--on-blue); --lane-a: #3b7ced; --lane-b: #7aa8ff; --radius: 20px; --radius-lg: 28px; --max: 1200px; }
+body { font-family: var(--font); }
+h1, h2, h3 { font-family: var(--display); }
+h1 { font-size: clamp(34px, 4.8vw, 68px); line-height: 1.02; font-weight: 800; font-stretch: 118%; font-style: italic; letter-spacing: -0.025em; }
+h2 { font-size: clamp(30px, 3.8vw, 48px); line-height: 1.08; font-weight: 750; font-stretch: 112%; letter-spacing: -0.02em; }
+.split h2 { font-size: clamp(28px, 3.4vw, 44px); }
+h3 { font-stretch: 106%; letter-spacing: -0.01em; }
+h1 em, h2 em { color: inherit; font-style: inherit; }
+.center { text-align: left; } .center .lead { margin-left: 0; margin-right: 0; }
+.head { max-width: 50em; }
+.eyebrow { font-size: 16px; font-weight: 650; margin-bottom: 12px; }
+.cap { text-align: left; }
+.btn { border-radius: 12px; }
+.btn.ghost { background: var(--chip); box-shadow: none; }
+.pill { box-shadow: none; background: var(--chip); border-radius: 8px; }
+.shot { box-shadow: none; }
+.shot::after { box-shadow: inset 0 0 0 1px var(--line); }
+.b, .tile, .panel, .card, .servers, .fact, .whenmap { box-shadow: none; border: 1px solid var(--line); }
+.chip { box-shadow: inset 0 0 0 1px var(--line); border-radius: 8px; }
+.copy { box-shadow: none; border: 1px solid var(--line); border-radius: 8px; }
+.b .txt .k, .tag { font-size: 13px; }
+.b .txt .k, .tag { border-radius: 6px; }
+.tile .ico { border-radius: 10px; }
+.credits { text-align: left; }
+.credits p:not(.eyebrow) { margin: 0; }
+.credits .narrow { max-width: var(--max); }
+.hero { text-align: left; padding: clamp(48px, 7vw, 96px) 0 clamp(56px, 7vw, 96px); overflow: hidden; }
+.hero-top { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: clamp(24px, 4vw, 64px); align-items: center; }
+.hero .mark { width: 64px; height: 64px; margin-bottom: 26px; }
+.hero .lead { margin-left: 0; max-width: 34em; }
+.cta, .meta { justify-content: flex-start; }
+.hero .s-lanes { margin: 0 calc(-1 * var(--gutter) - 14vw) 0 clamp(40px, 5vw, 72px); }
+.s-track b { color: #fff; font: italic 800 clamp(20px, 2.5vw, 34px)/1 var(--font); font-stretch: 116%; letter-spacing: -0.015em; white-space: nowrap; }
+@media (max-width: 900px) { .hero-top { grid-template-columns: 1fr; } .hero .s-lanes { margin: 8px calc(-1 * var(--gutter) - 8vw) 0 44px; } }
+.b .big, .fact b { font-stretch: 112%; letter-spacing: -0.02em; }
 </style>
 </head>
 <body>
@@ -261,20 +282,27 @@ footer .fine { flex-basis: 100%; }
 </div>
 
 <section class="hero" id="top">
-  <div class="glow" aria-hidden="true"></div>
-  <div class="wrap">
-    <img class="appicon reveal" src="icon.png" width="112" height="112" alt="">
-    <p class="eyebrow reveal"><span class="en">For the Mac menu bar</span><span class="de">Für die Menüleiste des Mac</span></p>
-    <h1 class="reveal d1"><span class="en">Your shares.<br>Always <em>there</em>.</span><span class="de">Deine Freigaben.<br>Immer <em>da</em>.</span></h1>
-    <p class="lead reveal d2"><span class="en">A small menu bar app that <strong>keeps SMB shares mounted</strong> and brings them back after sleep, network changes and NAS restarts. With the passwords macOS already keeps for the Finder.</span><span class="de">Eine kleine App für die Menüleiste, die <strong>SMB-Freigaben verbunden hält</strong> und sie nach dem Ruhezustand, nach Netzwerkwechseln und NAS-Neustarts zurückholt. Mit den Passwörtern, die macOS schon für den Finder kennt.</span></p>
-    <div class="cta reveal d3">
-      <a class="btn" href="https://github.com/SH1FT-W/sharemount/releases/latest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg><span class="en">Download for Mac</span><span class="de">Für den Mac laden</span></a>
-      <a class="btn ghost" href="https://github.com/SH1FT-W/sharemount"><span class="en">View on GitHub</span><span class="de">Auf GitHub ansehen</span></a>
+  <div class="wrap hero-top">
+    <div>
+      <img class="mark" src="icon.png" width="64" height="64" alt="">
+      <h1><span class="en">Your shares.<br>Always there.</span><span class="de">Deine Freigaben.<br>Immer da.</span></h1>
+      <p class="lead reveal d2"><span class="en">A small menu bar app that <strong>keeps SMB shares mounted</strong> and brings them back after sleep, network changes and NAS restarts. With the passwords macOS already keeps for the Finder.</span><span class="de">Eine kleine App für die Menüleiste, die <strong>SMB-Freigaben verbunden hält</strong> und sie nach dem Ruhezustand, nach Netzwerkwechseln und NAS-Neustarts zurückholt. Mit den Passwörtern, die macOS schon für den Finder kennt.</span></p>
+      <div class="cta reveal d3">
+        <a class="btn" href="https://github.com/SH1FT-W/sharemount/releases/latest"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg><span class="en">Download for Mac</span><span class="de">Für den Mac laden</span></a>
+        <a class="btn ghost" href="https://github.com/SH1FT-W/sharemount"><span class="en">View on GitHub</span><span class="de">Auf GitHub ansehen</span></a>
+      </div>
+      <p class="meta reveal d3">
+        <span class="pill"><i></i><span id="sharemount-version">Version 26.10.7</span></span>
+        <span class="en">macOS 14 or later &middot; Apple silicon &middot; Free and open source</span><span class="de">macOS 14 oder neuer &middot; Apple Chip &middot; Kostenlos und Open Source</span>
+      </p>
     </div>
-    <p class="meta reveal d3">
-      <span class="pill"><i></i><span id="sharemount-version">Version 26.10.7</span></span>
-      <span class="en">macOS 14 or later &middot; Apple silicon &middot; Free and open source</span><span class="de">macOS 14 oder neuer &middot; Apple Chip &middot; Kostenlos und Open Source</span>
-    </p>
+    <div class="s-lanes" aria-hidden="true">
+      <div class="s-lane"><div class="s-track"><b><span class="en">Menu bar app</span><span class="de">App für die Menüleiste</span></b></div></div>
+      <div class="s-lane"><div class="s-track"><b><span class="en">Keychain</span><span class="de">Schlüsselbund</span></b></div></div>
+      <div class="s-lane"><div class="s-track"><b><span class="en">macOS 14 or newer</span><span class="de">macOS 14 oder neuer</span></b></div></div>
+    </div>
+  </div>
+  <div class="wrap">
     <div class="stage reveal d3">
       <figure class="menu">
         <div class="shot">

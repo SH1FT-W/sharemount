@@ -2,14 +2,14 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/readme-title-dark.webp" />
-  <img src="docs/images/readme-title-light.webp" alt="ShareMount: Your shares. Always there." />
+  <img src="docs/images/readme-title-light.webp" alt="ShareMount: Network shares that reconnect by themselves. Menu bar app. Keychain. macOS 14 or newer." />
 </picture>
 
 [![Version](https://img.shields.io/badge/dynamic/xml?url=https%3A%2F%2Fraw.githubusercontent.com%2FSH1FT-W%2Fsharemount%2Fmain%2FInfo.plist&query=%2F%2Fkey%5B.%3D%27CFBundleShortVersionString%27%5D%2Ffollowing-sibling%3A%3Astring%5B1%5D&label=version&style=flat-square&color=4A86F0&labelColor=0B0F17)](https://github.com/SH1FT-W/sharemount/releases/latest)
-[![macOS](https://img.shields.io/badge/macOS-14%2B%20Apple%20silicon-4A86F0?style=flat-square&labelColor=0B0F17&logo=apple&logoColor=white)](#set-up)
+[![macOS](https://img.shields.io/badge/macOS-14%2B%20Apple%20silicon-4A86F0?style=flat-square&labelColor=0B0F17&logo=apple&logoColor=white)](#get-started)
 [![Download](https://img.shields.io/badge/download-ShareMount.zip-4A86F0?style=flat-square&labelColor=0B0F17)](https://github.com/SH1FT-W/sharemount/releases/latest)
 
-<a href="https://sh1ft-w.github.io/sharemount"><b>Website</b></a>&emsp;<a href="#install">Install</a>&emsp;<a href="#set-up">Set up</a>&emsp;<a href="#menu">Menu</a>&emsp;<a href="#networks">Networks</a>&emsp;<a href="CHANGELOG.md">Changelog</a>
+<a href="https://sh1ft-w.github.io/sharemount"><b>Website</b></a>&emsp;<a href="#get-started">Get started</a>&emsp;<a href="#menu">Menu</a>&emsp;<a href="#networks">Networks</a>&emsp;<a href="CHANGELOG.md">Changelog</a>
 
 </div>
 
@@ -19,7 +19,7 @@ ShareMount is a small menu bar app that **keeps your SMB shares mounted** and br
 
 macOS mounts a share once and then forgets about it: after a wake-up or a NAS reboot the share is gone or hangs, and scripts that expect `/Volumes/Media` find `/Volumes/Media-1`. ShareMount only handles SMB and never reads or stores your passwords itself.
 
-## What it does when
+## What you get
 
 | When | ShareMount |
 |:--|:--|
@@ -33,18 +33,26 @@ macOS mounts a share once and then forgets about it: after a wake-up or a NAS re
 
 **New in 26.11:** shares that connect only on the networks you choose, Wake on LAN for servers that sleep, and signed updates: the app installs an update only if its signature matches. Every change is in the [changelog](CHANGELOG.md) and the [releases](https://github.com/SH1FT-W/sharemount/releases).
 
-<a id="install"></a>
-## Install
+<a id="get-started"></a><a id="install"></a><a id="set-up"></a>
+## Get started
 
 [![Download ShareMount](https://img.shields.io/badge/Download-ShareMount.zip-4A86F0?style=for-the-badge&labelColor=0B0F17&logo=apple&logoColor=white)](https://github.com/SH1FT-W/sharemount/releases/latest)
 
-Unzip `ShareMount.zip` and move `ShareMount.app` to **Applications** (updates can only replace it there). ShareMount is not notarized by Apple (that needs a paid developer account), so macOS blocks the first launch once: open **System Settings > Privacy & Security**, scroll to *"ShareMount" was blocked* and click **Open Anyway**, or run
+You need macOS 14 Sonoma or later (built and tested on macOS 27) on a Mac with Apple silicon. Intel Macs are not supported.
 
-```sh
-xattr -dr com.apple.quarantine /Applications/ShareMount.app
-```
+1. **Install it.** Unzip `ShareMount.zip` and move `ShareMount.app` to **Applications** (updates can only replace it there). ShareMount is not notarized by Apple (that needs a paid developer account), so macOS blocks the first launch once: open **System Settings > Privacy & Security**, scroll to *"ShareMount" was blocked* and click **Open Anyway**, or run
 
-On macOS 14 you can also right-click the app and choose **Open**. After that ShareMount updates itself.
+   ```sh
+   xattr -dr com.apple.quarantine /Applications/ShareMount.app
+   ```
+
+   On macOS 14 you can also right-click the app and choose **Open**. After that ShareMount updates itself.
+2. **Open the menu.** A drive icon appears in the menu bar (there is no Dock icon). Allow notifications and, if asked, access to the local network.
+3. **Add your shares.** Choose **Settings… > Add** and type the share, pick a server found via Bonjour or paste an `smb://` address. **Import Connected** adopts shares you already mounted in the Finder.
+4. **Sign in once.** If macOS has no password for a share yet, click it (or **Sign In…**), enter the password in the standard macOS window and tick **Remember this password in my keychain**.
+5. **Turn on Open at Login** in the menu, so ShareMount is there after every restart.
+
+With iCloud Drive on, the list of shares (not the passwords) is shared between your Macs.
 
 <details>
 <summary>Build from source</summary>
@@ -59,18 +67,6 @@ cd sharemount
 ```
 
 </details>
-
-<a id="set-up"></a>
-## Set up
-
-You need macOS 14 Sonoma or later (built and tested on macOS 27) on a Mac with Apple silicon. Intel Macs are not supported.
-
-1. **Open the menu.** A drive icon appears in the menu bar (there is no Dock icon). Allow notifications and, if asked, access to the local network.
-2. **Add your shares.** Choose **Settings… > Add** and type the share, pick a server found via Bonjour or paste an `smb://` address. **Import Connected** adopts shares you already mounted in the Finder.
-3. **Sign in once.** If macOS has no password for a share yet, click it (or **Sign In…**), enter the password in the standard macOS window and tick **Remember this password in my keychain**.
-4. **Turn on Open at Login** in the menu, so ShareMount is there after every restart.
-
-With iCloud Drive on, the list of shares (not the passwords) is shared between your Macs.
 
 <a id="menu"></a>
 ## Menu
@@ -177,3 +173,11 @@ SHAREMOUNT_LANG=en /Applications/ShareMount.app/Contents/MacOS/ShareMount   # or
 [MIT](LICENSE). Found a bug or missing something? [Open an issue](https://github.com/SH1FT-W/sharemount/issues).
 
 <sub>ShareMount is an independent project, not affiliated with Apple. The screenshots use demo data.</sub>
+
+<br/>
+
+<div align="center">
+<a href="https://sh1ft-w.github.io"><img src="https://sh1ft-w.github.io/readme/footer.png" width="640" alt="All SH1FT-W projects"></a>
+<br/>
+<sub>More open source for Home Assistant and the Mac at <a href="https://sh1ft-w.github.io">sh1ft-w.github.io</a></sub>
+</div>
