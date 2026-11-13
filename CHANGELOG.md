@@ -3,6 +3,14 @@
 All notable changes to ShareMount. Every release is also listed with its notes on the
 [releases page](https://github.com/SH1FT-W/sharemount/releases).
 
+## 26.11.2 (2026-11-13)
+
+### Fixed
+- **Shares missing after a restart.** If the Mac started faster than iCloud Drive could deliver
+  `shares.json` (for example after a crash), ShareMount began with no shares and never read the file
+  again until it was relaunched. It now keeps trying every 10 seconds and picks the shares up as soon
+  as the file is readable.
+
 ## 26.11.1 (2026-11-05)
 
 ### Added

@@ -85,8 +85,9 @@ final class Engine: ObservableObject {
     init() {
         Log.rotate()
         Store.migrateIfNeeded()
-        shares = Store.load()
-        configStamp = Store.modificationDate()
+        let start = Store.startState()
+        shares = start.shares
+        configStamp = start.stamp
         Log.write(L("Start v\(AppInfo.version): \(shares.count) Freigabe(n)", "Launch v\(AppInfo.version): \(shares.count) share(s)"))
         refreshCredentials()
 
@@ -217,9 +218,8 @@ final class Engine: ObservableObject {
             Store.migrateIfNeeded()
             lastMigration = Date()
         }
-        let stamp = Store.modificationDate()
-        guard stamp != configStamp else { return }
-        guard let new = Store.loadIfValid() else { return }   // halb geschrieben → beim nächsten Mal
+        // Half-written or not yet downloaded by iCloud Drive: keep the old stamp and try again next time
+        guard let (new, stamp) = Store.loadIfChanged(since: configStamp) else { return }
         configStamp = stamp
         guard new != shares else { return }
         let gone = Set(shares.map(\.id)).subtracting(new.map(\.id))

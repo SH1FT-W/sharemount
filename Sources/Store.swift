@@ -57,6 +57,21 @@ enum Store {
 
     static func load() -> [Share] { loadIfValid() ?? [] }
 
+    /// State at launch. The file date is only remembered once the file was actually read: right after a boot
+    /// iCloud Drive may not deliver shares.json yet, and the 10-s poll must then try again instead of keeping 0 shares.
+    static func startState(fileStamp: Date? = modificationDate(),
+                           load: () -> [Share]? = loadIfValid) -> (shares: [Share], stamp: Date?) {
+        loadIfChanged(since: nil, fileStamp: fileStamp, load: load) ?? ([], nil)
+    }
+
+    /// Reads shares.json if its date differs from `stamp`. nil = unchanged or not readable (yet); the caller
+    /// keeps its stamp then, so the next poll tries again.
+    static func loadIfChanged(since stamp: Date?, fileStamp: Date? = modificationDate(),
+                              load: () -> [Share]? = loadIfValid) -> (shares: [Share], stamp: Date?)? {
+        guard fileStamp != stamp, let shares = load() else { return nil }
+        return (shares, fileStamp)
+    }
+
     /// Vor dem Überschreiben eine Kopie (shares.backup.json) – falls eine Bearbeitung danebengeht.
     /// false = nicht geschrieben (z. B. iCloud Drive nicht beschreibbar, Platte voll); steht dann im Protokoll.
     @discardableResult

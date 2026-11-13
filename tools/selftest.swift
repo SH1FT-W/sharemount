@@ -87,6 +87,16 @@ struct SelfTest {
         expect(!String(decoding: try! Store.encode([named]), as: UTF8.self).contains("\"name\""), "leerer Name fällt weg")
         expect(named.displayName == "s", "leerer Name → Freigabename")
 
+        // Regression: after a crash the app started before iCloud Drive could deliver shares.json. It began
+        // with 0 shares, but remembered the file date anyway and so never tried to read the file again.
+        let fileDate = Date(timeIntervalSince1970: 1_000_000)
+        let start = Store.startState(fileStamp: fileDate, load: { nil })
+        expect(start.shares.isEmpty, "Start mit unlesbarer shares.json: noch keine Freigaben")
+        let later = Store.loadIfChanged(since: start.stamp, fileStamp: fileDate, load: { [Share(host: "h", share: "s", user: "u")] })
+        expect(later?.shares.count == 1 && later?.stamp == fileDate, "unlesbare shares.json wird später nachgeladen")
+        expect(Store.loadIfChanged(since: fileDate, fileStamp: fileDate, load: { [] }) == nil, "unveränderte Datei wird nicht neu gelesen")
+        expect(Store.loadIfChanged(since: nil, fileStamp: fileDate, load: { nil }) == nil, "halb geschriebene Datei: später erneut")
+
         print("Netz-Regeln")
         expect(NetworkIdentity.normalizeMAC("2:0:5e:10:0:1") == "02:00:5e:10:00:01", "MAC mit einstelligen Teilen → zweistellig")
         expect(NetworkIdentity.normalizeMAC("02-00-5E-10-00-01") == "02:00:5e:10:00:01", "MAC mit Bindestrichen, groß")
